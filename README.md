@@ -17,6 +17,14 @@ ADMIN_PASSWORD=Comuna2026*
 API_PORT=4000
 ```
 
+3. Si desplegas el frontend en Netlify y la API en otro servicio, define en Netlify:
+
+```env
+REACT_APP_API_BASE_URL=https://tu-api-publica.com
+```
+
+Si no se define, el frontend usa rutas relativas (`/api/...`) en el mismo dominio.
+
 ## Scripts
 
 - `npm run dev`: levanta frontend (puerto 3000) + API (puerto 4000)

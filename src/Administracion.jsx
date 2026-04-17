@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './Administracion.css';
+import { buildApiUrl, getConexionError } from './api';
 
 const SESION_STORAGE_KEY = 'adminComunaSesion';
 
@@ -128,7 +129,7 @@ function Administracion({ onVolver }) {
       }
 
       try {
-        const response = await fetch('/api/asistencias');
+        const response = await fetch(buildApiUrl('/api/asistencias'));
         if (!response.ok) {
           throw new Error('No se pudo cargar el listado.');
         }
@@ -136,7 +137,7 @@ function Administracion({ onVolver }) {
         const data = await response.json();
         setAsistencias(Array.isArray(data) ? data : []);
       } catch (error) {
-        setCrudError('No se pudo cargar el listado desde Cloudinary.');
+        setCrudError(error.message || getConexionError());
       }
     };
 
@@ -164,7 +165,7 @@ function Administracion({ onVolver }) {
     event.preventDefault();
 
     try {
-      const response = await fetch('/api/admin/login', {
+      const response = await fetch(buildApiUrl('/api/admin/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -181,7 +182,7 @@ function Administracion({ onVolver }) {
       setLogueado(true);
       sessionStorage.setItem(SESION_STORAGE_KEY, 'ok');
     } catch (error) {
-      setLoginError(error.message || 'Usuario o contrasena incorrectos.');
+      setLoginError(error.message || getConexionError());
     }
   };
 
@@ -222,7 +223,7 @@ function Administracion({ onVolver }) {
     }
 
     try {
-      const endpoint = editandoId ? `/api/asistencias/${editandoId}` : '/api/asistencias';
+      const endpoint = editandoId ? buildApiUrl(`/api/asistencias/${editandoId}`) : buildApiUrl('/api/asistencias');
       const method = editandoId ? 'PUT' : 'POST';
 
       const payload = editandoId
@@ -273,7 +274,7 @@ function Administracion({ onVolver }) {
 
   const onEliminar = async (id) => {
     try {
-      const response = await fetch(`/api/asistencias/${id}`, {
+      const response = await fetch(buildApiUrl(`/api/asistencias/${id}`), {
         method: 'DELETE',
       });
 
@@ -293,7 +294,7 @@ function Administracion({ onVolver }) {
 
   const onCambiarEstadoAsistencia = async (asistencia, estadoAsistencia) => {
     try {
-      let response = await fetch(`/api/asistencias/${asistencia.id}/estado`, {
+      let response = await fetch(buildApiUrl(`/api/asistencias/${asistencia.id}/estado`), {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -304,7 +305,7 @@ function Administracion({ onVolver }) {
       });
 
       if (response.status === 404 || response.status === 405) {
-        response = await fetch(`/api/asistencias/${asistencia.id}`, {
+        response = await fetch(buildApiUrl(`/api/asistencias/${asistencia.id}`), {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',

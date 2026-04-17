@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import './TarjetaEvento.css';
 import FooterComuna from './FooterComuna';
+import { buildApiUrl, getConexionError } from './api';
 
 const getNextEventDate = () => {
   return new Date(2026, 4, 9, 12, 0, 0);
@@ -85,7 +86,7 @@ function TarjetaEvento({ onVolver }) {
     }
 
     try {
-      const response = await fetch('/api/asistencias', {
+      const response = await fetch(buildApiUrl('/api/asistencias'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -104,7 +105,7 @@ function TarjetaEvento({ onVolver }) {
       alert('Asistencia confirmada');
       setFormData({ nombre: '', apellido: '', telefono: '', email: '' });
     } catch (error) {
-      alert(error.message || 'Hubo un problema guardando la asistencia. Intenta nuevamente.');
+      alert(error.message || getConexionError());
     }
   };
 
