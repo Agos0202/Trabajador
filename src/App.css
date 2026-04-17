@@ -1,38 +1,141 @@
-.App {
-  text-align: center;
+:root {
+  --beige-bg: #f2e8d9;
+  --beige-soft: #f7efe3;
+  --olive-main: #556b2f;
+  --olive-dark: #3f4f22;
+  --book-edge: #8d6f45;
+  --text-dark: #3b3428;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.worker-day-page {
+  background:
+    radial-gradient(circle at 10% 10%, rgba(133, 157, 78, 0.16), transparent 35%),
+    radial-gradient(circle at 90% 85%, rgba(111, 82, 44, 0.12), transparent 28%),
+    linear-gradient(180deg, var(--beige-soft), var(--beige-bg));
+  color: var(--text-dark);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.hero-card {
+  max-width: 860px;
+  background: rgba(255, 251, 243, 0.9);
+  border: 1px solid rgba(85, 107, 47, 0.25);
+  border-radius: 24px;
+  backdrop-filter: blur(2px);
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+.worker-title {
+  color: var(--olive-main);
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(2rem, 6vw, 3.6rem);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-wrap: balance;
+}
+
+.book-button {
+  --btn-height: 64px;
+  position: relative;
+  width: min(360px, 95%);
+  height: var(--btn-height);
+  border: 0;
+  background: transparent;
+  perspective: 850px;
+  display: block;
+}
+
+.book-half {
+  position: absolute;
+  inset: 0;
+  width: 50%;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  background: linear-gradient(180deg, #748d3e, var(--olive-main));
+  color: #f7f3eb;
+  font-family: 'Nunito', sans-serif;
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  transition: transform 0.7s ease, box-shadow 0.5s ease;
+  box-shadow: 0 10px 24px rgba(63, 79, 34, 0.25);
+  border: 1px solid rgba(255, 244, 225, 0.35);
 }
 
-.App-link {
-  color: #61dafb;
+.left-half {
+  left: 0;
+  border-radius: 10px 0 0 10px;
+  transform-origin: right center;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.right-half {
+  right: 0;
+  left: auto;
+  border-radius: 0 10px 10px 0;
+  transform-origin: left center;
+}
+
+.book-center {
+  position: absolute;
+  top: 7%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 5px;
+  height: 86%;
+  background: linear-gradient(180deg, #d8b78c, var(--book-edge));
+  border-radius: 999px;
+  box-shadow: 0 0 10px rgba(141, 111, 69, 0.35);
+}
+
+.book-button:hover .left-half,
+.book-button.open .left-half {
+  transform: rotateY(62deg);
+}
+
+.book-button:hover .right-half,
+.book-button.open .right-half {
+  transform: rotateY(-62deg);
+}
+
+.book-button:focus-visible {
+  outline: 3px solid rgba(85, 107, 47, 0.4);
+  outline-offset: 6px;
+  border-radius: 12px;
+}
+
+.hint-text {
+  color: #5a513f;
+  font-family: 'Nunito', sans-serif;
+}
+
+.footer-section {
+  background: rgba(225, 209, 184, 0.75);
+  border-top: 1px solid rgba(85, 107, 47, 0.25);
+}
+
+.footer-text {
+  font-family: 'Nunito', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--olive-dark);
+}
+
+.social-link {
+  font-size: 1.5rem;
+  color: var(--olive-main);
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.social-link:hover {
+  color: #334119;
+  transform: translateY(-2px);
+}
+
+@media (max-width: 576px) {
+  .book-button {
+    --btn-height: 58px;
   }
-  to {
-    transform: rotate(360deg);
+
+  .book-half {
+    font-size: 1rem;
   }
 }

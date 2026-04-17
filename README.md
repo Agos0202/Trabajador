@@ -1,70 +1,37 @@
-# Getting Started with Create React App
+# Trabajo Comuna
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+La app ahora guarda las asistencias en Cloudinary mediante una API Node.
 
-## Available Scripts
+## Configuracion
 
-In the project directory, you can run:
+1. Copia `.env.example` a `.env`.
+2. Completa tus credenciales de Cloudinary en `.env`:
 
-### `npm start`
+```env
+CLOUDINARY_CLOUD_NAME=tu_cloud_name
+CLOUDINARY_API_KEY=tu_api_key
+CLOUDINARY_API_SECRET=tu_api_secret
+CLOUDINARY_DB_PUBLIC_ID=comuna_asistencias_db
+ADMIN_USER=FloridaLuisiana
+ADMIN_PASSWORD=Comuna2026*
+API_PORT=4000
+```
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Scripts
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- `npm run dev`: levanta frontend (puerto 3000) + API (puerto 4000)
+- `npm start`: levanta solo frontend
+- `npm run api`: levanta solo API
+- `npm run build`: build de produccion frontend
 
-### `npm test`
+## Flujo de datos
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- El formulario de confirmacion envia asistencias a `POST /api/asistencias`.
+- El panel `/administracion` usa:
+	- `POST /api/admin/login`
+	- `GET /api/asistencias`
+	- `POST /api/asistencias`
+	- `PUT /api/asistencias/:id`
+	- `DELETE /api/asistencias/:id`
 
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+La base de datos se guarda como JSON en Cloudinary (recurso `raw`), usando `CLOUDINARY_DB_PUBLIC_ID`.
