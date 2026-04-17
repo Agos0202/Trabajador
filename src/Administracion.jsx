@@ -174,8 +174,17 @@ function Administracion({ onVolver }) {
       });
 
       if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Credenciales invalidas.');
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          throw new Error(getConexionError());
+        }
+
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Credenciales invalidas.');
+        throw new Error(errorData.message || getConexionError());
       }
 
       setLoginError('');
