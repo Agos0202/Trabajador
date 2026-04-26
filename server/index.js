@@ -27,6 +27,71 @@ const getErrorMessage = (error, fallback) => {
   return error?.error?.message || error?.message || fallback;
 };
 
+const normalizarDni = (value) => {
+  return String(value ?? '').replace(/\D/g, '');
+};
+
+const parseNumeroSorteo = (value) => {
+  const numero = Number.parseInt(value, 10);
+  return Number.isFinite(numero) && numero > 0 ? numero : null;
+};
+
+const obtenerMaxNumeroSorteo = (asistencias) => {
+  let maxNumero = 0;
+
+  asistencias.forEach((item) => {
+    const numero = parseNumeroSorteo(item.numeroSorteo);
+    if (numero && numero > maxNumero) {
+      maxNumero = numero;
+    }
+  });
+
+  return maxNumero;
+};
+
+const normalizarDb = (dbRaw) => {
+  if (Array.isArray(dbRaw)) {
+    const maxNumero = obtenerMaxNumeroSorteo(dbRaw);
+    return {
+      asistencias: dbRaw,
+      ultimoNumeroSorteo: maxNumero,
+    };
+  }
+
+  const asistencias = Array.isArray(dbRaw?.asistencias) ? dbRaw.asistencias : [];
+  const ultimoNumero = parseNumeroSorteo(dbRaw?.ultimoNumeroSorteo);
+  const maxNumero = obtenerMaxNumeroSorteo(asistencias);
+
+  return {
+    asistencias,
+    ultimoNumeroSorteo: ultimoNumero && ultimoNumero > maxNumero ? ultimoNumero : maxNumero,
+  };
+};
+
+const asegurarNumerosSorteo = async (db) => {
+  const { asistencias } = db;
+  let siguienteNumero = db.ultimoNumeroSorteo;
+  let huboCambios = false;
+
+  asistencias.forEach((item) => {
+    const numero = parseNumeroSorteo(item.numeroSorteo);
+    if (!numero) {
+      siguienteNumero += 1;
+      item.numeroSorteo = siguienteNumero;
+      huboCambios = true;
+    }
+  });
+
+  if (db.ultimoNumeroSorteo !== siguienteNumero) {
+    db.ultimoNumeroSorteo = siguienteNumero;
+    huboCambios = true;
+  }
+
+  if (huboCambios) {
+    await saveDb(db);
+  }
+};
+
 const isCloudinaryNotFound = (error) => {
   const httpCode = error?.http_code || error?.error?.http_code;
   const message = error?.message || error?.error?.message || '';
@@ -37,24 +102,40 @@ const isCloudinaryNotFound = (error) => {
 const getDb = async () => {
   try {
     const resource = await cloudinary.api.resource(CLOUDINARY_DB_PUBLIC_ID, { resource_type: 'raw' });
-    const response = await fetch(resource.secure_url);
+    const bustCacheUrl = `${resource.secure_url}?t=${Date.now()}`;
+    const response = await fetch(bustCacheUrl, {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+      },
+    });
 
     if (!response.ok) {
       throw new Error('No se pudo leer la base desde Cloudinary.');
     }
 
     const json = await response.json();
-    return Array.isArray(json) ? json : [];
+    return normalizarDb(json);
   } catch (error) {
     if (isCloudinaryNotFound(error)) {
-      return [];
+      return {
+        asistencias: [],
+        ultimoNumeroSorteo: 0,
+      };
     }
     throw error;
   }
 };
 
-const saveDb = async (asistencias) => {
-  const payload = Buffer.from(JSON.stringify(asistencias, null, 2), 'utf8');
+const saveDb = async (db) => {
+  const payload = Buffer.from(
+    JSON.stringify({
+      asistencias: db.asistencias,
+      ultimoNumeroSorteo: db.ultimoNumeroSorteo,
+    }, null, 2),
+    'utf8'
+  );
 
   await new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -103,8 +184,9 @@ app.post('/api/admin/login', (req, res) => {
 
 app.get('/api/asistencias', async (req, res) => {
   try {
-    const asistencias = await getDb();
-    res.json(asistencias);
+    const db = await getDb();
+    await asegurarNumerosSorteo(db);
+    res.json(db.asistencias);
   } catch (error) {
     res.status(500).json({ message: getErrorMessage(error, 'No se pudo obtener asistencias.') });
   }
@@ -112,20 +194,36 @@ app.get('/api/asistencias', async (req, res) => {
 
 app.post('/api/asistencias', async (req, res) => {
   try {
-    const { nombre, apellido, telefono, email, estadoAsistencia } = req.body || {};
+    const { nombre, apellido, telefono, dni, email, estadoAsistencia } = req.body || {};
+    const dniNormalizado = normalizarDni(dni ?? email);
 
-    if (!nombre || !apellido || !telefono || !email) {
+    if (!nombre || !apellido || !telefono || !dniNormalizado) {
       res.status(400).json({ message: 'Todos los campos son obligatorios.' });
       return;
     }
 
-    const asistencias = await getDb();
+    const db = await getDb();
+    await asegurarNumerosSorteo(db);
+    const { asistencias } = db;
+
+    const yaRegistrado = asistencias.some(
+      (item) => normalizarDni(item.dni ?? item.email) === dniNormalizado
+    );
+
+    if (yaRegistrado) {
+      res.status(409).json({ message: 'Ya te encuentras registrado/a' });
+      return;
+    }
+
+    const proximoNumeroSorteo = db.ultimoNumeroSorteo + 1;
+
     const nuevaAsistencia = {
       id: `${Date.now()}-${Math.floor(Math.random() * 100000)}`,
       nombre: String(nombre).trim(),
       apellido: String(apellido).trim(),
       telefono: String(telefono).trim(),
-      email: String(email).trim(),
+      dni: dniNormalizado,
+      numeroSorteo: proximoNumeroSorteo,
       estadoAsistencia: ['presente', 'ausente', 'pendiente'].includes(estadoAsistencia)
         ? estadoAsistencia
         : 'pendiente',
@@ -133,9 +231,13 @@ app.post('/api/asistencias', async (req, res) => {
     };
 
     asistencias.push(nuevaAsistencia);
-    await saveDb(asistencias);
+    db.ultimoNumeroSorteo = proximoNumeroSorteo;
+    await saveDb(db);
 
-    res.status(201).json(nuevaAsistencia);
+    res.status(201).json({
+      ...nuevaAsistencia,
+      numeroLista: nuevaAsistencia.numeroSorteo,
+    });
   } catch (error) {
     res.status(500).json({ message: getErrorMessage(error, 'No se pudo guardar la asistencia.') });
   }
@@ -144,13 +246,34 @@ app.post('/api/asistencias', async (req, res) => {
 app.put('/api/asistencias/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, apellido, telefono, email, estadoAsistencia } = req.body || {};
+    const { nombre, apellido, telefono, dni, email, estadoAsistencia } = req.body || {};
 
-    const asistencias = await getDb();
+    const db = await getDb();
+    await asegurarNumerosSorteo(db);
+    const { asistencias } = db;
     const index = asistencias.findIndex((item) => item.id === id);
 
     if (index === -1) {
       res.status(404).json({ message: 'Asistencia no encontrada.' });
+      return;
+    }
+
+    const dniNormalizado = normalizarDni(dni ?? email ?? asistencias[index].dni ?? asistencias[index].email);
+    if (!dniNormalizado) {
+      res.status(400).json({ message: 'El DNI es obligatorio.' });
+      return;
+    }
+
+    const yaRegistrado = asistencias.some((item, itemIndex) => {
+      if (itemIndex === index) {
+        return false;
+      }
+
+      return normalizarDni(item.dni ?? item.email) === dniNormalizado;
+    });
+
+    if (yaRegistrado) {
+      res.status(409).json({ message: 'Ya existe un invitado con ese DNI.' });
       return;
     }
 
@@ -159,13 +282,14 @@ app.put('/api/asistencias/:id', async (req, res) => {
       nombre: String(nombre ?? asistencias[index].nombre).trim(),
       apellido: String(apellido ?? asistencias[index].apellido).trim(),
       telefono: String(telefono ?? asistencias[index].telefono).trim(),
-      email: String(email ?? asistencias[index].email).trim(),
+      dni: dniNormalizado,
+      email: dniNormalizado,
       estadoAsistencia: ['presente', 'ausente', 'pendiente'].includes(estadoAsistencia)
         ? estadoAsistencia
         : asistencias[index].estadoAsistencia || 'pendiente',
     };
 
-    await saveDb(asistencias);
+    await saveDb(db);
     res.json(asistencias[index]);
   } catch (error) {
     res.status(500).json({ message: getErrorMessage(error, 'No se pudo actualizar la asistencia.') });
@@ -182,7 +306,9 @@ app.patch('/api/asistencias/:id/estado', async (req, res) => {
       return;
     }
 
-    const asistencias = await getDb();
+    const db = await getDb();
+    await asegurarNumerosSorteo(db);
+    const { asistencias } = db;
     const index = asistencias.findIndex((item) => item.id === id);
 
     if (index === -1) {
@@ -195,7 +321,7 @@ app.patch('/api/asistencias/:id/estado', async (req, res) => {
       estadoAsistencia,
     };
 
-    await saveDb(asistencias);
+    await saveDb(db);
     res.json(asistencias[index]);
   } catch (error) {
     res.status(500).json({ message: getErrorMessage(error, 'No se pudo actualizar el estado de asistencia.') });
@@ -205,7 +331,9 @@ app.patch('/api/asistencias/:id/estado', async (req, res) => {
 app.delete('/api/asistencias/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const asistencias = await getDb();
+    const db = await getDb();
+    await asegurarNumerosSorteo(db);
+    const { asistencias } = db;
     const siguiente = asistencias.filter((item) => item.id !== id);
 
     if (siguiente.length === asistencias.length) {
@@ -213,7 +341,8 @@ app.delete('/api/asistencias/:id', async (req, res) => {
       return;
     }
 
-    await saveDb(siguiente);
+    db.asistencias = siguiente;
+    await saveDb(db);
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ message: getErrorMessage(error, 'No se pudo eliminar la asistencia.') });

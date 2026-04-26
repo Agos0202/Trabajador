@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './Administracion.css';
@@ -62,6 +62,15 @@ const cargarLogoComoDataUrl = () => {
   });
 };
 
+const obtenerNumeroSorteo = (item, indexFallback = 0) => {
+  const numero = Number.parseInt(item?.numeroSorteo ?? item?.numeroLista, 10);
+  if (Number.isFinite(numero) && numero > 0) {
+    return numero;
+  }
+
+  return indexFallback + 1;
+};
+
 function Administracion({ onVolver }) {
   const [usuario, setUsuario] = useState('');
   const [password, setPassword] = useState('');
@@ -74,21 +83,29 @@ function Administracion({ onVolver }) {
     nombre: '',
     apellido: '',
     telefono: '',
-    email: '',
+    dni: '',
   });
 
   const [busqueda, setBusqueda] = useState('');
   const [busquedaAsistencia, setBusquedaAsistencia] = useState('');
   const [crudError, setCrudError] = useState('');
   const [descargandoPdf, setDescargandoPdf] = useState(false);
+  const [descargandoPdfAsistencia, setDescargandoPdfAsistencia] = useState(false);
   const [seccionActiva, setSeccionActiva] = useState(obtenerSeccionDesdeRuta);
   const [fechaActual] = useState(() => new Date());
   const [cantidadSorteos, setCantidadSorteos] = useState('');
   const [resultadosSorteo, setResultadosSorteo] = useState([]);
   const [errorSorteo, setErrorSorteo] = useState('');
   const [sorteoEnCurso, setSorteoEnCurso] = useState(false);
-  const [ruletaNombre, setRuletaNombre] = useState('');
+  const [ruletaNumero, setRuletaNumero] = useState('');
   const [ruletaDetalle, setRuletaDetalle] = useState('');
+  const [modalGanador, setModalGanador] = useState({
+    visible: false,
+    nombre: '',
+    numeroGanador: null,
+    sorteoNumero: null,
+  });
+  const resolverModalGanadorRef = useRef(null);
 
   const totalAsistencias = useMemo(() => asistencias.length, [asistencias]);
 
@@ -100,7 +117,7 @@ function Administracion({ onVolver }) {
     }
 
     return asistencias.filter((item) => {
-      const texto = `${item.apellido} ${item.nombre} ${item.telefono} ${item.email}`.toLowerCase();
+      const texto = `${item.apellido} ${item.nombre} ${item.telefono} ${item.dni || item.email || ''}`.toLowerCase();
       return texto.includes(termino);
     });
   }, [asistencias, busqueda]);
@@ -113,7 +130,7 @@ function Administracion({ onVolver }) {
     }
 
     return asistencias.filter((item) => {
-      const texto = `${item.apellido} ${item.nombre} ${item.telefono} ${item.email}`.toLowerCase();
+      const texto = `${item.apellido} ${item.nombre} ${item.telefono} ${item.dni || item.email || ''}`.toLowerCase();
       return texto.includes(termino);
     });
   }, [asistencias, busquedaAsistencia]);
@@ -121,6 +138,15 @@ function Administracion({ onVolver }) {
   const presentesSorteo = useMemo(() => {
     return asistencias.filter((item) => item.estadoAsistencia === 'presente');
   }, [asistencias]);
+
+  const presentesConNumero = useMemo(() => {
+    return presentesSorteo
+      .map((item, index) => ({
+        item,
+        numero: obtenerNumeroSorteo(item, index),
+      }))
+      .sort((a, b) => a.numero - b.numero);
+  }, [presentesSorteo]);
 
   useEffect(() => {
     const cargarAsistencias = async () => {
@@ -205,13 +231,13 @@ function Administracion({ onVolver }) {
   };
 
   const validarFormulario = () => {
-    if (!formData.nombre.trim() || !formData.apellido.trim() || !formData.telefono.trim() || !formData.email.trim()) {
+    if (!formData.nombre.trim() || !formData.apellido.trim() || !formData.telefono.trim() || !formData.dni.trim()) {
       setCrudError('Todos los campos son obligatorios.');
       return false;
     }
 
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      setCrudError('Ingresa un email valido.');
+    if (!/^\d{7,8}$/.test(formData.dni.trim())) {
+      setCrudError('Ingresa un DNI valido (7 u 8 numeros).');
       return false;
     }
 
@@ -219,7 +245,7 @@ function Administracion({ onVolver }) {
   };
 
   const resetFormulario = () => {
-    setFormData({ nombre: '', apellido: '', telefono: '', email: '' });
+    setFormData({ nombre: '', apellido: '', telefono: '', dni: '' });
     setEditandoId(null);
     setCrudError('');
   };
@@ -238,10 +264,17 @@ function Administracion({ onVolver }) {
       const payload = editandoId
         ? {
             ...formData,
+            dni: formData.dni.trim(),
+            email: formData.dni.trim(),
             estadoAsistencia:
               asistencias.find((item) => item.id === editandoId)?.estadoAsistencia || 'pendiente',
           }
-        : { ...formData, estadoAsistencia: 'pendiente' };
+        : {
+            ...formData,
+            dni: formData.dni.trim(),
+            email: formData.dni.trim(),
+            estadoAsistencia: 'pendiente',
+          };
 
       const response = await fetch(endpoint, {
         method,
@@ -276,7 +309,7 @@ function Administracion({ onVolver }) {
       nombre: asistencia.nombre,
       apellido: asistencia.apellido,
       telefono: asistencia.telefono,
-      email: asistencia.email,
+      dni: asistencia.dni || asistencia.email || '',
     });
     irASeccion('personal');
   };
@@ -323,7 +356,8 @@ function Administracion({ onVolver }) {
             nombre: asistencia.nombre,
             apellido: asistencia.apellido,
             telefono: asistencia.telefono,
-            email: asistencia.email,
+            dni: asistencia.dni || asistencia.email || '',
+            email: asistencia.dni || asistencia.email || '',
             estadoAsistencia,
           }),
         });
@@ -381,13 +415,13 @@ function Administracion({ onVolver }) {
 
       autoTable(doc, {
         startY: 110,
-        head: [['N°', 'Apellido', 'Nombre', 'Telefono', 'Mail']],
+        head: [['N°', 'Apellido', 'Nombre', 'Telefono', 'DNI']],
         body: asistenciasFiltradas.map((item, index) => [
-          index + 1,
+          obtenerNumeroSorteo(item, index),
           item.apellido,
           item.nombre,
           item.telefono,
-          item.email,
+          item.dni || item.email,
         ]),
         theme: 'grid',
         headStyles: {
@@ -409,15 +443,132 @@ function Administracion({ onVolver }) {
     }
   };
 
+  const onDescargarPdfAsistencia = async () => {
+    if (descargandoPdfAsistencia) {
+      return;
+    }
+
+    const presentes = asistencias.filter((item) => item.estadoAsistencia === 'presente');
+    const ausentes = asistencias.filter((item) => item.estadoAsistencia !== 'presente');
+
+    setDescargandoPdfAsistencia(true);
+
+    try {
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const colorPrimario = [32, 78, 53];
+      const colorSecundario = [231, 244, 230];
+      const colorTextoSuave = [75, 94, 84];
+      const colorRojo = [140, 50, 40];
+      const colorRojoClaro = [253, 235, 232];
+
+      doc.setFillColor(colorPrimario[0], colorPrimario[1], colorPrimario[2]);
+      doc.rect(0, 0, pageWidth, 90, 'F');
+
+      try {
+        const logoDataUrl = await cargarLogoComoDataUrl();
+        doc.addImage(logoDataUrl, 'PNG', 36, 18, 56, 56);
+      } catch (error) {
+        // Si el logo falla, el PDF se genera igual.
+      }
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(18);
+      doc.text('Asistencia al Evento - Dia del Trabajador', 102, 42);
+      doc.setFontSize(11);
+      doc.text(`Generado: ${new Date().toLocaleString('es-AR')}`, 102, 62);
+
+      let cursorY = 110;
+
+      doc.setTextColor(colorPrimario[0], colorPrimario[1], colorPrimario[2]);
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Presentes (${presentes.length})`, 36, cursorY);
+      cursorY += 10;
+
+      autoTable(doc, {
+        startY: cursorY,
+        head: [['N°', 'Apellido', 'Nombre', 'Telefono', 'DNI']],
+        body: presentes.length > 0
+          ? presentes.map((item, index) => [
+              obtenerNumeroSorteo(item, index),
+              item.apellido,
+              item.nombre,
+              item.telefono,
+              item.dni || item.email,
+            ])
+          : [['', 'Sin registros', '', '', '']],
+        theme: 'grid',
+        headStyles: { fillColor: colorPrimario, textColor: [255, 255, 255] },
+        alternateRowStyles: { fillColor: colorSecundario },
+        styles: { fontSize: 10, textColor: colorTextoSuave },
+        didDrawPage: (data) => { cursorY = data.cursor.y; },
+      });
+
+      cursorY = doc.lastAutoTable.finalY + 18;
+
+      doc.setTextColor(colorRojo[0], colorRojo[1], colorRojo[2]);
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Ausentes (${ausentes.length})`, 36, cursorY);
+      cursorY += 10;
+
+      autoTable(doc, {
+        startY: cursorY,
+        head: [['N°', 'Apellido', 'Nombre', 'Telefono', 'DNI']],
+        body: ausentes.length > 0
+          ? ausentes.map((item, index) => [
+              obtenerNumeroSorteo(item, index),
+              item.apellido,
+              item.nombre,
+              item.telefono,
+              item.dni || item.email,
+            ])
+          : [['', 'Sin registros', '', '', '']],
+        theme: 'grid',
+        headStyles: { fillColor: colorRojo, textColor: [255, 255, 255] },
+        alternateRowStyles: { fillColor: colorRojoClaro },
+        styles: { fontSize: 10, textColor: colorTextoSuave },
+      });
+
+      doc.save('asistencia_fiesta_dia_del_trabajador.pdf');
+    } finally {
+      setDescargandoPdfAsistencia(false);
+    }
+  };
+
   const esperar = (ms) => new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
 
+  const esperarConfirmacionGanador = () => new Promise((resolve) => {
+    resolverModalGanadorRef.current = resolve;
+  });
+
+  const onContinuarProximoSorteo = () => {
+    setModalGanador((prev) => ({
+      ...prev,
+      visible: false,
+    }));
+
+    if (resolverModalGanadorRef.current) {
+      resolverModalGanadorRef.current();
+      resolverModalGanadorRef.current = null;
+    }
+  };
+
   const onGenerarSorteo = async () => {
     setErrorSorteo('');
     setResultadosSorteo([]);
+    setRuletaNumero('');
+    setModalGanador({
+      visible: false,
+      nombre: '',
+      numeroGanador: null,
+      sorteoNumero: null,
+    });
 
-    const totalPresentes = presentesSorteo.length;
+    const totalPresentes = presentesConNumero.length;
     const cantidad = Number.parseInt(cantidadSorteos, 10);
 
     if (!Number.isFinite(cantidad) || cantidad <= 0) {
@@ -439,40 +590,50 @@ function Administracion({ onVolver }) {
 
     try {
       const resultados = [];
+      const candidatosDisponibles = [...presentesConNumero];
 
       for (let i = 0; i < cantidad; i += 1) {
-        const inicio = Math.floor((i * totalPresentes) / cantidad);
-        const fin = Math.floor(((i + 1) * totalPresentes) / cantidad);
-        const rango = presentesSorteo.slice(inicio, fin);
-
-        if (rango.length === 0) {
+        if (candidatosDisponibles.length === 0) {
           continue;
         }
 
-        setRuletaDetalle(`Sorteo ${i + 1} - Rango ${inicio + 1} a ${fin}`);
+        setRuletaDetalle(`Sorteo ${i + 1} de ${cantidad}`);
 
-        const vueltas = 18 + Math.floor(Math.random() * 8);
+        const vueltas = 24 + Math.floor(Math.random() * 10);
+        const offset = Math.floor(Math.random() * candidatosDisponibles.length);
         for (let paso = 0; paso < vueltas; paso += 1) {
-          const candidato = rango[paso % rango.length];
-          setRuletaNombre(`${candidato.apellido}, ${candidato.nombre}`);
-          await esperar(70 + paso * 6);
+          const indiceVisual = (paso + offset) % candidatosDisponibles.length;
+          const candidatoVisual = candidatosDisponibles[indiceVisual];
+          setRuletaNumero(String(candidatoVisual.numero));
+          await esperar(60 + paso * 7);
         }
 
-        const indiceGanador = Math.floor(Math.random() * rango.length);
-        const ganador = rango[indiceGanador];
-        setRuletaNombre(`${ganador.apellido}, ${ganador.nombre}`);
+        const indiceGanador = Math.floor(Math.random() * candidatosDisponibles.length);
+        const ganador = candidatosDisponibles[indiceGanador];
+        setRuletaNumero(String(ganador.numero));
         await esperar(500);
 
         resultados.push({
           sorteoNumero: i + 1,
-          rangoDesde: inicio + 1,
-          rangoHasta: fin,
-          ganador,
+          numeroGanador: ganador.numero,
+          ganador: ganador.item,
         });
+
+        setModalGanador({
+          visible: true,
+          nombre: `${ganador.item.apellido}, ${ganador.item.nombre}`,
+          numeroGanador: ganador.numero,
+          sorteoNumero: i + 1,
+        });
+        await esperarConfirmacionGanador();
+
+        candidatosDisponibles.splice(indiceGanador, 1);
       }
 
       setResultadosSorteo(resultados);
+      setRuletaDetalle('Sorteo finalizado');
     } finally {
+      resolverModalGanadorRef.current = null;
       setSorteoEnCurso(false);
     }
   };
@@ -620,8 +781,8 @@ function Administracion({ onVolver }) {
                 <label htmlFor="telefono" className="admin-label">Telefono</label>
                 <input id="telefono" name="telefono" type="tel" className="admin-input" value={formData.telefono} onChange={onChangeFormulario} />
 
-                <label htmlFor="email" className="admin-label">Email</label>
-                <input id="email" name="email" type="email" className="admin-input" value={formData.email} onChange={onChangeFormulario} />
+                <label htmlFor="dni" className="admin-label">DNI</label>
+                <input id="dni" name="dni" type="text" inputMode="numeric" className="admin-input" value={formData.dni} onChange={onChangeFormulario} />
 
                 {crudError ? <p className="admin-error">{crudError}</p> : null}
 
@@ -635,7 +796,7 @@ function Administracion({ onVolver }) {
                   <input
                     type="text"
                     className="admin-input admin-search-input"
-                    placeholder="Buscar por apellido, nombre, telefono o mail"
+                    placeholder="Buscar por apellido, nombre, telefono o DNI"
                     value={busqueda}
                     onChange={(event) => setBusqueda(event.target.value)}
                   />
@@ -663,18 +824,18 @@ function Administracion({ onVolver }) {
                         <th>Apellido</th>
                         <th>Nombre</th>
                         <th>Telefono</th>
-                        <th>Mail</th>
+                        <th>DNI</th>
                         <th>Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
                       {asistenciasFiltradas.map((asistencia, index) => (
                         <tr key={asistencia.id}>
-                          <td>{index + 1}</td>
+                          <td>{obtenerNumeroSorteo(asistencia, index)}</td>
                           <td>{asistencia.apellido}</td>
                           <td>{asistencia.nombre}</td>
                           <td>{asistencia.telefono}</td>
-                          <td>{asistencia.email}</td>
+                          <td>{asistencia.dni || asistencia.email}</td>
                           <td className="admin-actions-cell">
                             <button type="button" className="admin-inline-btn edit" onClick={() => onEditar(asistencia)}>Editar</button>
                             <button type="button" className="admin-inline-btn delete" onClick={() => onEliminar(asistencia.id)}>Eliminar</button>
@@ -690,7 +851,24 @@ function Administracion({ onVolver }) {
 
           {seccionActiva === 'asistencia' ? (
             <article className="admin-card admin-mini-card">
-              <h2 className="admin-section-title">Asistencia al evento</h2>
+              <div className="admin-subcard-header">
+                <div>
+                  <h2 className="admin-section-title" style={{ margin: 0 }}>Asistencia al evento</h2>
+                  <p className="admin-subtitle" style={{ margin: '0.2rem 0 0' }}>
+                    Presentes: <strong>{asistencias.filter((item) => item.estadoAsistencia === 'presente').length}</strong>
+                    {' · '}
+                    Ausentes: <strong>{asistencias.filter((item) => item.estadoAsistencia !== 'presente').length}</strong>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="admin-button primary"
+                  onClick={onDescargarPdfAsistencia}
+                  disabled={descargandoPdfAsistencia || asistencias.length === 0}
+                >
+                  {descargandoPdfAsistencia ? 'Generando PDF...' : 'Descargar PDF'}
+                </button>
+              </div>
 
               <input
                 type="text"
@@ -709,7 +887,7 @@ function Administracion({ onVolver }) {
                       <div>
                         <p className="admin-mini-text admin-person-name">{item.apellido}, {item.nombre}</p>
                         <p className="admin-status-text">
-                          Estado: {item.estadoAsistencia === 'presente' ? 'Presente' : item.estadoAsistencia === 'ausente' ? 'Ausente' : 'Pendiente'}
+                          Estado: {item.estadoAsistencia === 'presente' ? 'Presente' : 'Ausente'}
                         </p>
                       </div>
                       <div className="admin-asistencia-actions">
@@ -738,11 +916,22 @@ function Administracion({ onVolver }) {
           {seccionActiva === 'sorteo' ? (
             <article className="admin-card admin-mini-card">
               <h2 className="admin-section-title">Sorteo</h2>
-              <p className="admin-subtitle">Participantes presentes: {presentesSorteo.length}</p>
+              <p className="admin-subtitle">Participantes presentes: {presentesConNumero.length}</p>
 
               <div className={`admin-ruleta ${sorteoEnCurso ? 'is-spinning' : ''}`}>
-                <p className="admin-ruleta-detail">{ruletaDetalle || 'Configura la cantidad y genera la ruleta por rangos'}</p>
-                <p className="admin-ruleta-name">{ruletaNombre || 'Esperando sorteo...'}</p>
+                <p className="admin-ruleta-detail">{ruletaDetalle || 'Configura la cantidad y genera la ruleta por numero de carga'}</p>
+                <div className="admin-ruleta-wheel">
+                  <span className="admin-ruleta-pointer" aria-hidden="true" />
+                  <p className="admin-ruleta-number">{ruletaNumero || '--'}</p>
+                </div>
+                <p className="admin-ruleta-order-label">Numeros cargados (orden):</p>
+                <div className="admin-ruleta-numbers" role="list" aria-label="Numeros de sorteo en orden de carga">
+                  {presentesConNumero.map((registro) => (
+                    <span key={`ruleta-numero-${registro.item.id}`} className="admin-ruleta-chip" role="listitem">
+                      {registro.numero}
+                    </span>
+                  ))}
+                </div>
               </div>
 
               <div className="admin-sorteo-controls">
@@ -770,13 +959,13 @@ function Administracion({ onVolver }) {
 
               {errorSorteo ? <p className="admin-error">{errorSorteo}</p> : null}
 
-              {presentesSorteo.length === 0 ? (
+              {presentesConNumero.length === 0 ? (
                 <p className="admin-mini-text">Aun no hay personas marcadas como presentes.</p>
               ) : (
                 <ul className="admin-sorteo-list">
-                  {presentesSorteo.map((item, index) => (
-                    <li key={`sorteo-${item.id}`} className="admin-sorteo-item">
-                      <span>{index + 1}. {item.apellido}, {item.nombre}</span>
+                  {presentesConNumero.map((registro) => (
+                    <li key={`sorteo-${registro.item.id}`} className="admin-sorteo-item">
+                      <span>{registro.numero}. {registro.item.apellido}, {registro.item.nombre}</span>
                     </li>
                   ))}
                 </ul>
@@ -784,21 +973,21 @@ function Administracion({ onVolver }) {
 
               {resultadosSorteo.length > 0 ? (
                 <div className="admin-sorteo-results">
-                  <h3 className="admin-subcard-title">Ganadores por rango</h3>
+                  <h3 className="admin-subcard-title">Ganadores</h3>
                   <div className="admin-table-wrap">
                     <table className="admin-table">
                       <thead>
                         <tr>
                           <th>Sorteo</th>
-                          <th>Rango</th>
-                          <th>Ganador</th>
+                          <th>Numero ganador</th>
+                          <th>Participante</th>
                         </tr>
                       </thead>
                       <tbody>
                         {resultadosSorteo.map((resultado) => (
                           <tr key={`resultado-${resultado.sorteoNumero}`}>
                             <td>{resultado.sorteoNumero}</td>
-                            <td>{resultado.rangoDesde} a {resultado.rangoHasta}</td>
+                            <td>{resultado.numeroGanador}</td>
                             <td>{resultado.ganador.apellido}, {resultado.ganador.nombre}</td>
                           </tr>
                         ))}
@@ -811,6 +1000,38 @@ function Administracion({ onVolver }) {
           ) : null}
         </section>
       </section>
+
+      {modalGanador.visible ? (
+        <div className="admin-modal-overlay" role="dialog" aria-modal="true" aria-live="assertive">
+          <div className="admin-modal-ganador">
+            <div className="admin-modal-celebracion" aria-hidden="true">
+              {Array.from({ length: 18 }).map((_, index) => (
+                <span key={`celebracion-${index}`} className="admin-modal-dot" />
+              ))}
+            </div>
+            <h3 className="admin-modal-title">Felicidades {modalGanador.nombre}!</h3>
+            <p className="admin-modal-number">N° {modalGanador.numeroGanador}</p>
+            <p className="admin-modal-subtitle">Ganador/a del sorteo N° {modalGanador.sorteoNumero}</p>
+            <button
+              type="button"
+              className="admin-button primary"
+              onClick={onContinuarProximoSorteo}
+            >
+              Realizar el proximo sorteo
+            </button>
+            <div className="admin-modal-footer">
+              <img
+                src="/logo.PNG"
+                alt="Logo de la comuna"
+                className="admin-modal-footer-logo"
+              />
+              <p className="admin-modal-footer-text">
+                Feliz dia del trabajador! Les desea Chicho Soria
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -43,3 +43,39 @@ Si no se define, el frontend usa rutas relativas (`/api/...`) en el mismo domini
 	- `DELETE /api/asistencias/:id`
 
 La base de datos se guarda como JSON en Cloudinary (recurso `raw`), usando `CLOUDINARY_DB_PUBLIC_ID`.
+
+## Deploy de API en Render
+
+El repo incluye `render.yaml` para publicar la API Express.
+
+1. En Render, entra a **New +** -> **Blueprint**.
+2. Conecta tu repositorio y selecciona la rama `main`.
+3. Render detecta `render.yaml` y crea el servicio `trabajo-comuna-api`.
+4. Carga estas variables en Render:
+
+```env
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+CLOUDINARY_DB_PUBLIC_ID=comuna_asistencias_db
+ADMIN_USER=...
+ADMIN_PASSWORD=...
+```
+
+5. Espera el deploy y prueba:
+
+```txt
+https://TU_API_RENDER.onrender.com/api/health
+```
+
+Debe responder `{"ok":true}`.
+
+## Conectar Netlify con la API
+
+En Netlify -> Site settings -> Environment variables:
+
+```env
+REACT_APP_API_BASE_URL=https://TU_API_RENDER.onrender.com
+```
+
+Luego ejecuta **Clear cache and deploy site** para que React tome la variable en build.

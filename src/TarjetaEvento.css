@@ -2,8 +2,8 @@
 
 :root {
   --crema: #f5f0e8;
-  --verde-oliva: #556b2f;
-  --verde-oliva-oscuro: #3f4f22;
+  --verde-oliva: #7AC943;
+  --verde-oliva-oscuro: #5a9e28;
   --texto-oscuro: #3d3327;
   --texto-secundario: #6d5f4f;
   --blanco: #ffffff;
@@ -171,7 +171,7 @@
 
 .evento-title {
   font-family: 'Playfair Display', serif;
-  color: var(--verde-oliva-oscuro);
+  color: #3d6b18;
   font-size: clamp(2.45rem, 5vw, 3.7rem);
   font-weight: 700;
   line-height: 1.15;
@@ -279,7 +279,7 @@
 }
 
 .btn-confirmar:hover {
-  background: linear-gradient(135deg, #647c39, #4a5f29);
+  background: linear-gradient(135deg, #5fa32e, #4e8a22);
   color: #fffaf0;
   transform: translateY(-1px);
   box-shadow: 0 10px 18px rgba(62, 53, 37, 0.2);
@@ -299,7 +299,7 @@
 
 .btn-volver:hover {
   background: rgba(85, 107, 47, 0.08);
-  color: #2d3f1a;
+  color: #3d6b18;
 }
 
 @media (max-width: 768px) {
@@ -310,4 +310,123 @@
   .form-shell {
     padding: 1.7rem 1rem;
   }
+}
+
+.modal-alerta-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 2000;
+}
+
+.modal-alerta-contenido {
+  width: min(760px, 100%);
+  background: #ffffff;
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.35);
+}
+
+.modal-alerta-header {
+  padding: 1.8rem 1.5rem 1.4rem;
+  text-align: center;
+}
+
+.modal-alerta-header-success {
+  background: linear-gradient(135deg, #7AC943, #8ed44f);
+}
+
+.modal-alerta-header-error {
+  background: linear-gradient(135deg, #c2372f, #dd584f);
+}
+
+.modal-alerta-icono {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  margin: 0 auto 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  font-weight: 700;
+}
+
+.modal-alerta-icon-success {
+  background: #ffffff;
+  color: #7AC943;
+}
+
+.modal-alerta-icon-error {
+  background: #ffffff;
+  color: #c2372f;
+}
+
+.modal-alerta-titulo {
+  margin: 0;
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.modal-alerta-cuerpo {
+  padding: 1.8rem 1.6rem 1.2rem;
+}
+
+.modal-alerta-mensaje {
+  margin: 0;
+  text-align: center;
+  font-family: 'Montserrat', sans-serif;
+  color: #2b2b2b;
+  font-size: clamp(1.05rem, 2.8vw, 1.5rem);
+  line-height: 1.5;
+}
+
+.modal-alerta-numero {
+  margin: 0.55rem 0 0;
+  text-align: center;
+  font-family: 'Playfair Display', serif;
+  color: #3d6b18;
+  font-size: clamp(3.4rem, 12vw, 6rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.modal-alerta-recordatorio {
+  margin: 1rem 0 0;
+  text-align: center;
+  font-family: 'Montserrat', sans-serif;
+  color: #4a4a4a;
+  font-size: clamp(0.98rem, 2.3vw, 1.18rem);
+  line-height: 1.45;
+}
+
+.modal-alerta-acciones {
+  padding: 0 1.6rem 1.8rem;
+  display: flex;
+  justify-content: center;
+}
+
+.modal-alerta-boton {
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #5a9e28, #7AC943);
+  color: #ffffff;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  min-width: 180px;
+  padding: 0.9rem 1.6rem;
+}
+
+.modal-alerta-boton:hover {
+  background: linear-gradient(135deg, #4e8a22, #5fa32e);
+  color: #ffffff;
 }
