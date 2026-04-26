@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './Administracion.css';
-import { buildApiUrl, getConexionError } from './api';
+import { buildApiUrl, getConexionError, resolveApiErrorMessage } from './api';
 
 const SESION_STORAGE_KEY = 'adminComunaSesion';
 
@@ -163,7 +163,7 @@ function Administracion({ onVolver }) {
         const data = await response.json();
         setAsistencias(Array.isArray(data) ? data : []);
       } catch (error) {
-        setCrudError(error.message || getConexionError());
+        setCrudError(resolveApiErrorMessage(error, getConexionError()));
       }
     };
 
@@ -217,7 +217,7 @@ function Administracion({ onVolver }) {
       setLogueado(true);
       sessionStorage.setItem(SESION_STORAGE_KEY, 'ok');
     } catch (error) {
-      setLoginError(error.message || getConexionError());
+      setLoginError(resolveApiErrorMessage(error, getConexionError()));
     }
   };
 

@@ -349,7 +349,13 @@ app.delete('/api/asistencias/:id', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`API escuchando en http://localhost:${PORT}`);
-  logCloudinaryStatus();
-});
+// Exportar app para uso en Netlify Functions
+module.exports = { app };
+
+// Solo escuchar si se ejecuta directamente (desarrollo local)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`API escuchando en http://localhost:${PORT}`);
+    logCloudinaryStatus();
+  });
+}
