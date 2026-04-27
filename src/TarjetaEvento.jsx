@@ -100,12 +100,18 @@ function TarjetaEvento({ onVolver }) {
 
     if (!formData.nombre.trim()) {
       newErrors.nombre = 'El nombre es obligatorio.';
+    } else if (!/^[a-zA-Z]+$/.test(formData.nombre.trim())) {
+      newErrors.nombre = 'El nombre solo debe contener letras.';
     }
     if (!formData.apellido.trim()) {
       newErrors.apellido = 'El apellido es obligatorio.';
+    } else if (!/^[a-zA-Z]+$/.test(formData.apellido.trim())) {
+      newErrors.apellido = 'El apellido solo debe contener letras.';
     }
     if (!formData.telefono.trim()) {
       newErrors.telefono = 'El telefono es obligatorio.';
+    } else if (!/^\d{10}$/.test(formData.telefono.trim())) {
+      newErrors.telefono = 'El teléfono debe tener exactamente 10 números.';
     }
     if (!formData.dni.trim()) {
       newErrors.dni = 'El DNI es obligatorio.';
