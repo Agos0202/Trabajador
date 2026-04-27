@@ -97,12 +97,8 @@ function TarjetaEvento({ onVolver }) {
 
   const validateForm = () => {
     const newErrors = {};
-
     setErrors({});
     return true;
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
   const onSubmit = async (event) => {
