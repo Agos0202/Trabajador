@@ -96,8 +96,21 @@ function TarjetaEvento({ onVolver }) {
   };
 
   const validateForm = () => {
-    setErrors({});
-    return true;
+    const newErrors = {};
+    if (!formData.nombre.trim()) {
+      newErrors.nombre = 'El nombre es obligatorio';
+    }
+    if (!formData.apellido.trim()) {
+      newErrors.apellido = 'El apellido es obligatorio';
+    }
+    if (!formData.telefono.trim()) {
+      newErrors.telefono = 'El teléfono es obligatorio';
+    }
+    if (!formData.dni.trim()) {
+      newErrors.dni = 'El DNI es obligatorio';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const onSubmit = async (event) => {
