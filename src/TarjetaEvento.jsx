@@ -96,7 +96,6 @@ function TarjetaEvento({ onVolver }) {
   };
 
   const validateForm = () => {
-    const newErrors = {};
     setErrors({});
     return true;
   };
