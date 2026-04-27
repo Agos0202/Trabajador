@@ -30,7 +30,7 @@ const normalizarDni = (value) => {
 function TarjetaEvento({ onVolver }) {
   const eventDate = useMemo(() => getNextEventDate(), []);
 
-  const [timeLeft, setTimeLeft] = useState(() => getTimeLeft(eventDate));
+  const [timeLeft, setTimeLeft] = useState(getTimeLeft(eventDate));
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -44,134 +44,111 @@ function TarjetaEvento({ onVolver }) {
     tipo: 'info',
     titulo: '',
     mensaje: '',
-    numeroSorteo: null,
-    recordatorio: '',
   });
 
+  // ⏱ contador
   useEffect(() => {
     const timer = setInterval(() => {
       setTimeLeft(getTimeLeft(eventDate));
     }, 1000);
-
     return () => clearInterval(timer);
   }, [eventDate]);
 
+  // 🔥 cargar DNIs UNA sola vez
   useEffect(() => {
-    const cargarDnisRegistrados = async () => {
+    const cargarDnis = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'asistencias'));
-        const asistentes = querySnapshot.docs.map(doc => doc.data());
-        if (!Array.isArray(asistentes)) {
-          return;
-        }
-        const dnis = asistentes
-          .map((item) => normalizarDni(item?.dni ?? item?.email))
-          .filter(Boolean);
-        setDnisRegistrados(Array.from(new Set(dnis)));
-      } catch (error) {
-        // Si falla la carga inicial, la validacion fuerte queda en backend.
+        const snapshot = await getDocs(collection(db, 'asistencias'));
+        const lista = snapshot.docs.map(doc =>
+          normalizarDni(doc.data()?.dni)
+        );
+        setDnisRegistrados(lista);
+      } catch (e) {
+        console.error("Error cargando DNIs", e);
       }
     };
-    cargarDnisRegistrados();
+
+    cargarDnis();
   }, []);
 
-  const onInputChange = (event) => {
-    const { name, value } = event.target;
+  const onInputChange = (e) => {
+    const { name, value } = e.target;
 
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: value
     }));
 
-    setErrors((prev) => ({
+    setErrors(prev => ({
       ...prev,
-      [name]: '',
+      [name]: ''
     }));
   };
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'El nombre es obligatorio';
-    }
-    if (!formData.apellido.trim()) {
-      newErrors.apellido = 'El apellido es obligatorio';
-    }
-    if (!formData.telefono.trim()) {
-      newErrors.telefono = 'El teléfono es obligatorio';
-    }
-    if (!formData.dni.trim()) {
-      newErrors.dni = 'El DNI es obligatorio';
-    }
+
+    if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es obligatorio';
+    if (!formData.apellido.trim()) newErrors.apellido = 'El apellido es obligatorio';
+    if (!formData.telefono.trim()) newErrors.telefono = 'El teléfono es obligatorio';
+    if (!formData.dni.trim()) newErrors.dni = 'El DNI es obligatorio';
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const onSubmit = async (event) => {
+  const onSubmit = async (e) => {
+    e.preventDefault();
 
-    event.preventDefault();
-    console.log('Datos enviados:', formData);
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     const dniNormalizado = normalizarDni(formData.dni);
 
     try {
+      // 🚫 validar duplicado LOCAL
       if (dnisRegistrados.includes(dniNormalizado)) {
         throw new Error('Ya te encuentras registrado/a');
       }
 
-      // Verificar en Firestore si el DNI ya existe
-      const querySnapshot = await getDocs(collection(db, 'asistencias'));
-      const existentes = querySnapshot.docs.map(doc => doc.data());
-      const yaRegistrado = Array.isArray(existentes)
-        && existentes.some((item) => normalizarDni(item?.dni ?? item?.email) === dniNormalizado);
-
-      if (yaRegistrado) {
-        throw new Error('Ya te encuentras registrado/a');
-      }
-
-      // Guardar en Firestore
+      // 💾 guardar
       await addDoc(collection(db, 'asistencias'), {
         ...formData,
         dni: dniNormalizado,
-        email: dniNormalizado,
         estadoAsistencia: 'pendiente',
+        createdAt: new Date()
       });
 
-      // El número de sorteo es el orden de creación (no hay campo, así que null)
       setModalAlerta({
         visible: true,
         tipo: 'success',
         titulo: 'Registro exitoso',
-        mensaje: 'Asistencia confirmada.',
-        numeroSorteo: null,
-        recordatorio: '',
+        mensaje: 'Asistencia confirmada'
       });
-      setDnisRegistrados((prev) => (prev.includes(dniNormalizado) ? prev : [...prev, dniNormalizado]));
-      setFormData({ nombre: '', apellido: '', telefono: '', dni: '' });
+
+      // actualizar lista local
+      setDnisRegistrados(prev => [...prev, dniNormalizado]);
+
+      // limpiar form
+      setFormData({
+        nombre: '',
+        apellido: '',
+        telefono: '',
+        dni: ''
+      });
+
     } catch (error) {
       setModalAlerta({
         visible: true,
         tipo: 'error',
-        titulo: 'No se pudo registrar',
-        mensaje: error?.message || 'No se pudo conectar con el servidor.',
-        numeroSorteo: null,
-        recordatorio: '',
+        titulo: 'Error',
+        mensaje: error.message
       });
     }
   };
 
   const cerrarModal = () => {
-    setModalAlerta((prev) => ({
-      ...prev,
-      visible: false,
-    }));
+    setModalAlerta(prev => ({ ...prev, visible: false }));
   };
-
-  const claseHeaderModal = modalAlerta.tipo === 'success' ? 'modal-alerta-header-success' : 'modal-alerta-header-error';
-  const claseIconoModal = modalAlerta.tipo === 'success' ? 'modal-alerta-icon-success' : 'modal-alerta-icon-error';
 
   const eventDateText = eventDate.toLocaleDateString('es-AR', {
     day: 'numeric',
@@ -183,171 +160,77 @@ function TarjetaEvento({ onVolver }) {
     <div className="evento-page">
       <main className="evento-layout">
         <div className="evento-stack">
+
           <h1 className="evento-title">¡Feliz Día del Trabajador!</h1>
-          <div className="evento-divider" aria-hidden="true" />
 
           <p className="evento-subtitle">
-            En reconocimiento a tu esfuerzo y dedicación, te invitamos a celebrar el Día del Trabajador junto a nosotros compartiendo un rico locro criollo entre amigos.
-            Será un honor contar con tu presencia en este evento especial.
+            Te invitamos a compartir un locro criollo.
           </p>
 
-          <div className="evento-meta">
-            <p className="mb-0">
-              <span className="fw-semibold">Lugar: Transporte SORIANA</span>
-            </p>
-            <a
-              className="evento-place-link"
-              href="https://maps.app.goo.gl/8XJZzduTbsrT53BP9"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Ver ubicación
-            </a>
+          <p><b>Fecha:</b> {eventDateText} - 12:00 hs</p>
+
+          {/* ⏱ contador */}
+          <div className="countdown-grid">
+            <div>{timeLeft.days} días</div>
+            <div>{timeLeft.hours} hs</div>
+            <div>{timeLeft.minutes} min</div>
+            <div>{timeLeft.seconds} seg</div>
           </div>
 
-          <div className="evento-bloque-verde">
-            <p className="mb-1 evento-bloque-fecha">
-              <span className="fw-semibold">El día </span> {eventDateText} - 12:00 hs
-            </p>
+          {/* 📋 formulario */}
+          <form onSubmit={onSubmit}>
 
-            <div className="countdown-grid" role="timer" aria-live="polite">
-              <div className="countdown-box">
-                <div className="countdown-number">{timeLeft.days}</div>
-                <small className="countdown-label">Días</small>
-              </div>
-              <div className="countdown-box">
-                <div className="countdown-number">{timeLeft.hours}</div>
-                <small className="countdown-label">Horas</small>
-              </div>
-              <div className="countdown-box">
-                <div className="countdown-number">{timeLeft.minutes}</div>
-                <small className="countdown-label">Min</small>
-              </div>
-              <div className="countdown-box">
-                <div className="countdown-number">{timeLeft.seconds}</div>
-                <small className="countdown-label">Seg</small>
-              </div>
-            </div>
+            <input
+              name="nombre"
+              placeholder="Nombre"
+              value={formData.nombre}
+              onChange={onInputChange}
+            />
+            <p>{errors.nombre}</p>
 
-            <p className="evento-subtitle evento-bloque-subtitle">
-              ¡Falta poco para el gran día!   
-            </p>
-          </div>
+            <input
+              name="apellido"
+              placeholder="Apellido"
+              value={formData.apellido}
+              onChange={onInputChange}
+            />
+            <p>{errors.apellido}</p>
 
-           <p className="evento-subtitle">
-           Para confirmar tu asistencia, completa el siguiente formulario. ¡Esperamos verte allí para celebrar juntos este día tan especial!
-          </p>
+            <input
+              name="telefono"
+              placeholder="Teléfono"
+              value={formData.telefono}
+              onChange={onInputChange}
+            />
+            <p>{errors.telefono}</p>
 
-          <div className="form-shell">
-            <h2 className="form-title">Confirmá tu asistencia</h2>
-            <form noValidate onSubmit={onSubmit}>
-                <div className="row">
-                  <div className="col-12 col-md-6 mb-3">
-                    <label htmlFor="nombre" className="form-label evento-label">
-                      Nombre
-                    </label>
-                    <input
-                      id="nombre"
-                      name="nombre"
-                      type="text"
-                      className={`form-control elegant-input ${errors.nombre ? 'is-invalid' : ''}`}
-                      value={formData.nombre}
-                      onChange={onInputChange}
-                    />
-                    <div className="invalid-feedback">{errors.nombre}</div>
-                  </div>
+            <input
+              name="dni"
+              placeholder="DNI"
+              value={formData.dni}
+              onChange={onInputChange}
+            />
+            <p>{errors.dni}</p>
 
-                  <div className="col-12 col-md-6 mb-3">
-                    <label htmlFor="apellido" className="form-label evento-label">
-                      Apellido
-                    </label>
-                    <input
-                      id="apellido"
-                      name="apellido"
-                      type="text"
-                      className={`form-control elegant-input ${errors.apellido ? 'is-invalid' : ''}`}
-                      value={formData.apellido}
-                      onChange={onInputChange}
-                    />
-                    <div className="invalid-feedback">{errors.apellido}</div>
-                  </div>
-                </div>
+            <button type="submit">Confirmar</button>
+          </form>
 
-                <div className="mb-3">
-                  <label htmlFor="telefono" className="form-label evento-label">
-                    Teléfono
-                  </label>
-                  <input
-                    id="telefono"
-                    name="telefono"
-                    type="tel"
-                    className={`form-control elegant-input ${errors.telefono ? 'is-invalid' : ''}`}
-                    value={formData.telefono}
-                    onChange={onInputChange}
-                  />
-                  <div className="invalid-feedback">{errors.telefono}</div>
-                </div>
+          <button onClick={onVolver}>Volver</button>
 
-                <div className="mb-3 mt-3">
-                  <label htmlFor="dni" className="form-label evento-label">
-                    DNI
-                  </label>
-                  <input
-                    id="dni"
-                    name="dni"
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={8}
-                    className={`form-control elegant-input ${errors.dni ? 'is-invalid' : ''}`}
-                    value={formData.dni}
-                    onChange={onInputChange}
-                  />
-                  <div className="invalid-feedback">{errors.dni}</div>
-                </div>
-
-                <button type="submit" className="btn btn-confirmar w-100 mt-3">
-                  Confirmar asistencia
-                </button>
-              </form>
-
-              <button type="button" className="btn btn-volver w-100 mt-2" onClick={onVolver}>
-                Volver
-              </button>
-            </div>
-            <p className="evento-subtitle">
-           Este evento es solo para trabajadores de nuestro establecimiento.
-          </p>
         </div>
       </main>
 
       <FooterComuna />
 
+      {/* 🔔 modal */}
       {modalAlerta.visible && (
-        <div className="modal-alerta-overlay" role="dialog" aria-modal="true" aria-live="assertive">
-          <div className="modal-alerta-contenido">
-            <div className={`modal-alerta-header ${claseHeaderModal}`}>
-              <div className={`modal-alerta-icono ${claseIconoModal}`}>
-                {modalAlerta.tipo === 'success' ? '✓' : '!'}
-              </div>
-              <h2 className="modal-alerta-titulo">{modalAlerta.titulo}</h2>
-            </div>
-            <div className="modal-alerta-cuerpo">
-              <p className="modal-alerta-mensaje">{modalAlerta.mensaje}</p>
-              {modalAlerta.numeroSorteo !== null && (
-                <p className="modal-alerta-numero">{modalAlerta.numeroSorteo}</p>
-              )}
-              {modalAlerta.recordatorio && (
-                <p className="modal-alerta-recordatorio">{modalAlerta.recordatorio}</p>
-              )}
-            </div>
-            <div className="modal-alerta-acciones">
-              <button type="button" className="btn modal-alerta-boton" onClick={cerrarModal}>
-                Aceptar
-              </button>
-            </div>
-          </div>
+        <div className="modal">
+          <h2>{modalAlerta.titulo}</h2>
+          <p>{modalAlerta.mensaje}</p>
+          <button onClick={cerrarModal}>Cerrar</button>
         </div>
       )}
+
     </div>
   );
 }
