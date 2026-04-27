@@ -133,7 +133,7 @@ function TarjetaEvento({ onVolver }) {
       }
 
       // Guardar en Firestore
-      const docRef = await addDoc(collection(db, 'asistencias'), {
+      await addDoc(collection(db, 'asistencias'), {
         ...formData,
         dni: dniNormalizado,
         email: dniNormalizado,
