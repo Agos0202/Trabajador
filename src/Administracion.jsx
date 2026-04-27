@@ -643,7 +643,7 @@ function Administracion({ onVolver }) {
           {seccionActiva === 'personal' ? (
             <article className="admin-card">
               <h2 className="admin-section-title">Personal Invitado</h2>
-              <p className="admin-subtitle">Total de asistencias confirmadas: {totalAsistencias}</p>
+              <p className="admin-subtitle">Total de personal confirmado: {totalAsistencias}</p>
 
               <h3 className="admin-subcard-title">{editandoId ? 'Editar asistencia' : 'Nueva asistencia'}</h3>
               <form className="admin-form" onSubmit={onGuardarAsistencia} noValidate>
