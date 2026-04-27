@@ -4,40 +4,19 @@ import autoTable from 'jspdf-autotable';
 import './Administracion.css';
 import { buildApiUrl, getConexionError, resolveApiErrorMessage } from './api';
 
-const SESION_STORAGE_KEY = 'adminComunaSesion';
-
 const obtenerSeccionDesdeRuta = () => {
   const path = window.location.pathname.toLowerCase();
-
-  if (path === '/administracion/personal') {
-    return 'personal';
-  }
-
-  if (path === '/administracion/asistencia') {
-    return 'asistencia';
-  }
-
-  if (path === '/administracion/sorteo') {
-    return 'sorteo';
-  }
-
+  if (path === '/4dmin2026c0mun4/personal') return 'personal';
+  if (path === '/4dmin2026c0mun4/asistencia') return 'asistencia';
+  if (path === '/4dmin2026c0mun4/sorteo') return 'sorteo';
   return 'menu';
 };
 
 const obtenerRutaDeSeccion = (seccion) => {
-  if (seccion === 'personal') {
-    return '/administracion/personal';
-  }
-
-  if (seccion === 'asistencia') {
-    return '/administracion/asistencia';
-  }
-
-  if (seccion === 'sorteo') {
-    return '/administracion/sorteo';
-  }
-
-  return '/administracion';
+  if (seccion === 'personal') return '/4dmin2026c0mun4/personal';
+  if (seccion === 'asistencia') return '/4dmin2026c0mun4/asistencia';
+  if (seccion === 'sorteo') return '/4dmin2026c0mun4/sorteo';
+  return '/4dmin2026c0mun4';
 };
 
 const cargarLogoComoDataUrl = () => {
@@ -72,10 +51,6 @@ const obtenerNumeroSorteo = (item, indexFallback = 0) => {
 };
 
 function Administracion({ onVolver }) {
-  const [usuario, setUsuario] = useState('');
-  const [password, setPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
-  const [logueado, setLogueado] = useState(() => sessionStorage.getItem(SESION_STORAGE_KEY) === 'ok');
 
   const [asistencias, setAsistencias] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
@@ -150,25 +125,19 @@ function Administracion({ onVolver }) {
 
   useEffect(() => {
     const cargarAsistencias = async () => {
-      if (!logueado) {
-        return;
-      }
-
       try {
         const response = await fetch(buildApiUrl('/api/asistencias'));
         if (!response.ok) {
           throw new Error('No se pudo cargar el listado.');
         }
-
         const data = await response.json();
         setAsistencias(Array.isArray(data) ? data : []);
       } catch (error) {
         setCrudError(resolveApiErrorMessage(error, getConexionError()));
       }
     };
-
     cargarAsistencias();
-  }, [logueado]);
+  }, []);
 
   useEffect(() => {
     const onPopState = () => {
@@ -187,39 +156,6 @@ function Administracion({ onVolver }) {
     setSeccionActiva(seccion);
   };
 
-  const onSubmitLogin = async (event) => {
-    event.preventDefault();
-
-    try {
-      const response = await fetch(buildApiUrl('/api/admin/login'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ usuario, password }),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Credenciales invalidas.');
-        }
-
-        const contentType = response.headers.get('content-type') || '';
-        if (!contentType.includes('application/json')) {
-          throw new Error(getConexionError());
-        }
-
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || getConexionError());
-      }
-
-      setLoginError('');
-      setLogueado(true);
-      sessionStorage.setItem(SESION_STORAGE_KEY, 'ok');
-    } catch (error) {
-      setLoginError(resolveApiErrorMessage(error, getConexionError()));
-    }
-  };
 
   const onChangeFormulario = (event) => {
     const { name, value } = event.target;
@@ -375,13 +311,6 @@ function Administracion({ onVolver }) {
     }
   };
 
-  const onCerrarSesion = () => {
-    setLogueado(false);
-    setUsuario('');
-    setPassword('');
-    setLoginError('');
-    sessionStorage.removeItem(SESION_STORAGE_KEY);
-  };
 
   const onDescargarPdf = async () => {
     if (asistenciasFiltradas.length === 0 || descargandoPdf) {
@@ -638,43 +567,6 @@ function Administracion({ onVolver }) {
     }
   };
 
-  if (!logueado) {
-    return (
-      <main className="admin-page">
-        <section className="admin-card">
-          <h1 className="admin-title">Administracion</h1>
-          <p className="admin-subtitle">Ingresa con tus credenciales para gestionar asistentes.</p>
-
-          <form onSubmit={onSubmitLogin} className="admin-form" noValidate>
-            <label htmlFor="usuario" className="admin-label">Usuario</label>
-            <input
-              id="usuario"
-              name="usuario"
-              type="text"
-              className="admin-input"
-              value={usuario}
-              onChange={(event) => setUsuario(event.target.value)}
-            />
-
-            <label htmlFor="password" className="admin-label">Contrasena</label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              className="admin-input"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-
-            {loginError ? <p className="admin-error">{loginError}</p> : null}
-
-            <button type="submit" className="admin-button primary">Ingresar</button>
-            <button type="button" className="admin-button secondary" onClick={onVolver}>Volver al inicio</button>
-          </form>
-        </section>
-      </main>
-    );
-  }
 
   return (
     <main className="admin-page">
@@ -692,14 +584,7 @@ function Administracion({ onVolver }) {
 
             <p className="admin-topbar-title">Comuna La Florida y Luisiana</p>
 
-            <button
-              type="button"
-              className="admin-top-icon danger"
-              onClick={onCerrarSesion}
-              aria-label="Cerrar sesion"
-            >
-              ⏻
-            </button>
+            {/* Botón de cerrar sesión eliminado */}
           </nav>
         </header>
 

@@ -4,14 +4,12 @@ import TarjetaEvento from './TarjetaEvento';
 import Administracion from './Administracion';
 
 const obtenerPantallaDesdeRuta = () => {
-  if (window.location.pathname.startsWith('/administracion')) {
+  if (window.location.pathname.startsWith('/4dmin2026c0mun4')) {
     return 'administracion';
   }
-
   if (window.location.pathname === '/evento') {
     return 'evento';
   }
-
   return 'inicio';
 };
 
