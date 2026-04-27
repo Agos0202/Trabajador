@@ -8,10 +8,8 @@ dotenv.config();
 const app = express();
 const PORT = process.env.API_PORT || process.env.PORT || 4000;
 const CLOUDINARY_DB_PUBLIC_ID = process.env.CLOUDINARY_DB_PUBLIC_ID || 'comuna_asistencias_db';
-const DEFAULT_ADMIN_USER = 'FloridaLuisiana';
-const DEFAULT_ADMIN_PASSWORD = 'Comuna2026*';
-const ADMIN_USER = process.env.ADMIN_USER || DEFAULT_ADMIN_USER;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || DEFAULT_ADMIN_PASSWORD;
+const ADMIN_USER = 'FloridaLuisiana';
+const ADMIN_PASSWORD = 'Comuna2026*';
 const CLOUDINARY_CLOUD_NAME = (process.env.CLOUDINARY_CLOUD_NAME || '').trim().toLowerCase();
 const CLOUDINARY_API_KEY = (process.env.CLOUDINARY_API_KEY || '').trim();
 const CLOUDINARY_API_SECRET = (process.env.CLOUDINARY_API_SECRET || '').trim();
@@ -176,18 +174,10 @@ const logCloudinaryStatus = async () => {
 app.post('/api/admin/login', (req, res) => {
   const usuarioIngresado = String(req.body?.usuario || '').trim();
   const passwordIngresada = String(req.body?.password || '').trim();
-  const usuarioConfigurado = String(ADMIN_USER || '').trim();
-  const passwordConfigurada = String(ADMIN_PASSWORD || '').trim();
-  const coincideConfigurado =
-    usuarioIngresado === usuarioConfigurado && passwordIngresada === passwordConfigurada;
-  const coincidePorDefecto =
-    usuarioIngresado === DEFAULT_ADMIN_USER && passwordIngresada === DEFAULT_ADMIN_PASSWORD;
-
-  if (coincideConfigurado || coincidePorDefecto) {
+  if (usuarioIngresado === ADMIN_USER && passwordIngresada === ADMIN_PASSWORD) {
     res.json({ ok: true });
     return;
   }
-
   res.status(401).json({ ok: false, message: 'Credenciales invalidas.' });
 });
 
