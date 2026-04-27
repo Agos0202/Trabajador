@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import './TarjetaEvento.css';
 import FooterComuna from './FooterComuna';
-import { buildApiUrl, getConexionError } from './api';
+import { db } from './firebase';
+import { collection, addDoc, getDocs } from 'firebase/firestore';
 
 const getNextEventDate = () => {
   return new Date(2026, 4, 9, 12, 0, 0);
@@ -58,26 +59,19 @@ function TarjetaEvento({ onVolver }) {
   useEffect(() => {
     const cargarDnisRegistrados = async () => {
       try {
-        const response = await fetch(buildApiUrl('/api/asistencias'));
-        if (!response.ok) {
-          return;
-        }
-
-        const asistentes = await response.json();
+        const querySnapshot = await getDocs(collection(db, 'asistencias'));
+        const asistentes = querySnapshot.docs.map(doc => doc.data());
         if (!Array.isArray(asistentes)) {
           return;
         }
-
         const dnis = asistentes
           .map((item) => normalizarDni(item?.dni ?? item?.email))
           .filter(Boolean);
-
         setDnisRegistrados(Array.from(new Set(dnis)));
       } catch (error) {
         // Si falla la carga inicial, la validacion fuerte queda en backend.
       }
     };
-
     cargarDnisRegistrados();
   }, []);
 
@@ -128,47 +122,32 @@ function TarjetaEvento({ onVolver }) {
         throw new Error('Ya te encuentras registrado/a');
       }
 
-      const existentesResponse = await fetch(buildApiUrl('/api/asistencias'));
-      if (existentesResponse.ok) {
-        const existentes = await existentesResponse.json().catch(() => []);
-        const yaRegistrado = Array.isArray(existentes)
-          && existentes.some((item) => normalizarDni(item?.dni ?? item?.email) === dniNormalizado);
+      // Verificar en Firestore si el DNI ya existe
+      const querySnapshot = await getDocs(collection(db, 'asistencias'));
+      const existentes = querySnapshot.docs.map(doc => doc.data());
+      const yaRegistrado = Array.isArray(existentes)
+        && existentes.some((item) => normalizarDni(item?.dni ?? item?.email) === dniNormalizado);
 
-        if (yaRegistrado) {
-          throw new Error('Ya te encuentras registrado/a');
-        }
+      if (yaRegistrado) {
+        throw new Error('Ya te encuentras registrado/a');
       }
 
-      const response = await fetch(buildApiUrl('/api/asistencias'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          dni: dniNormalizado,
-          email: dniNormalizado,
-          estadoAsistencia: 'pendiente',
-        }),
+      // Guardar en Firestore
+      const docRef = await addDoc(collection(db, 'asistencias'), {
+        ...formData,
+        dni: dniNormalizado,
+        email: dniNormalizado,
+        estadoAsistencia: 'pendiente',
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'No se pudo guardar tu confirmacion.');
-      }
-
-      const data = await response.json();
-      const numeroLista = Number.parseInt(data?.numeroSorteo ?? data?.numeroLista, 10);
-
+      // El número de sorteo es el orden de creación (no hay campo, así que null)
       setModalAlerta({
         visible: true,
         tipo: 'success',
         titulo: 'Registro exitoso',
-        mensaje: Number.isFinite(numeroLista) ? 'Tu número del sorteo es' : 'Asistencia confirmada.',
-        numeroSorteo: Number.isFinite(numeroLista) ? numeroLista : null,
-        recordatorio: Number.isFinite(numeroLista)
-          ? 'No te olvides de sacar captura para participar ese dia. Recuerda que los ganadores deben estar presente en el momento del sorteo.'
-          : '',
+        mensaje: 'Asistencia confirmada.',
+        numeroSorteo: null,
+        recordatorio: '',
       });
       setDnisRegistrados((prev) => (prev.includes(dniNormalizado) ? prev : [...prev, dniNormalizado]));
       setFormData({ nombre: '', apellido: '', telefono: '', dni: '' });
@@ -177,7 +156,7 @@ function TarjetaEvento({ onVolver }) {
         visible: true,
         tipo: 'error',
         titulo: 'No se pudo registrar',
-        mensaje: error?.response?.data?.message || error.message || getConexionError(),
+        mensaje: error?.message || 'No se pudo conectar con el servidor.',
         numeroSorteo: null,
         recordatorio: '',
       });

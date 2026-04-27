@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './Administracion.css';
-import { buildApiUrl, getConexionError, resolveApiErrorMessage } from './api';
+// importaciones de api eliminadas, ya no se usa
 import { db } from './firebase';
 import { collection, addDoc, updateDoc, doc, getDocs } from 'firebase/firestore';
 
