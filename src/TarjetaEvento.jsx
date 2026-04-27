@@ -98,26 +98,8 @@ function TarjetaEvento({ onVolver }) {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'El nombre es obligatorio.';
-    } else if (!/^[a-zA-Z]+$/.test(formData.nombre.trim())) {
-      newErrors.nombre = 'El nombre solo debe contener letras.';
-    }
-    if (!formData.apellido.trim()) {
-      newErrors.apellido = 'El apellido es obligatorio.';
-    } else if (!/^[a-zA-Z]+$/.test(formData.apellido.trim())) {
-      newErrors.apellido = 'El apellido solo debe contener letras.';
-    }
-    if (!formData.telefono.trim()) {
-      newErrors.telefono = 'El telefono es obligatorio.';
-    } else if (!/^\d{10}$/.test(formData.telefono.trim())) {
-      newErrors.telefono = 'El teléfono debe tener exactamente 10 números.';
-    }
-    if (!formData.dni.trim()) {
-      newErrors.dni = 'El DNI es obligatorio.';
-    } else if (!/^\d{7,8}$/.test(formData.dni.trim())) {
-      newErrors.dni = 'Ingresa un DNI valido (7 u 8 numeros).';
-    }
+    setErrors({});
+    return true;
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
