@@ -3,6 +3,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './Administracion.css';
 import { buildApiUrl, getConexionError, resolveApiErrorMessage } from './api';
+import { db } from './firebase';
+import { collection, addDoc, updateDoc, doc, getDocs } from 'firebase/firestore';
 
 const obtenerSeccionDesdeRuta = () => {
   const path = window.location.pathname.toLowerCase();
@@ -126,14 +128,11 @@ function Administracion({ onVolver }) {
   useEffect(() => {
     const cargarAsistencias = async () => {
       try {
-        const response = await fetch(buildApiUrl('/api/asistencias'));
-        if (!response.ok) {
-          throw new Error('No se pudo cargar el listado.');
-        }
-        const data = await response.json();
+        const querySnapshot = await getDocs(collection(db, 'asistencias'));
+        const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setAsistencias(Array.isArray(data) ? data : []);
       } catch (error) {
-        setCrudError(resolveApiErrorMessage(error, getConexionError()));
+        setCrudError(error.message || 'No se pudo cargar el listado desde Firebase.');
       }
     };
     cargarAsistencias();
@@ -184,48 +183,30 @@ function Administracion({ onVolver }) {
     }
 
     try {
-      const endpoint = editandoId ? buildApiUrl(`/api/asistencias/${editandoId}`) : buildApiUrl('/api/asistencias');
-      const method = editandoId ? 'PUT' : 'POST';
-
-      const payload = editandoId
-        ? {
-            ...formData,
-            dni: formData.dni.trim(),
-            email: formData.dni.trim(),
-            estadoAsistencia:
-              asistencias.find((item) => item.id === editandoId)?.estadoAsistencia || 'pendiente',
-          }
-        : {
-            ...formData,
-            dni: formData.dni.trim(),
-            email: formData.dni.trim(),
-            estadoAsistencia: 'pendiente',
-          };
-
-      const response = await fetch(endpoint, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'No se pudo guardar la asistencia.');
-      }
-
-      const asistencia = await response.json();
-
       if (editandoId) {
-        setAsistencias((prev) => prev.map((item) => (item.id === asistencia.id ? asistencia : item)));
+        // Actualizar asistencia existente
+        const asistenciaRef = doc(db, 'asistencias', editandoId);
+        await updateDoc(asistenciaRef, {
+          ...formData,
+          dni: formData.dni.trim(),
+          email: formData.dni.trim(),
+          estadoAsistencia:
+            asistencias.find((item) => item.id === editandoId)?.estadoAsistencia || 'pendiente',
+        });
+        setAsistencias((prev) => prev.map((item) => (item.id === editandoId ? { ...item, ...formData, dni: formData.dni.trim(), email: formData.dni.trim() } : item)));
       } else {
-        setAsistencias((prev) => [...prev, asistencia]);
+        // Agregar nueva asistencia
+        const docRef = await addDoc(collection(db, 'asistencias'), {
+          ...formData,
+          dni: formData.dni.trim(),
+          email: formData.dni.trim(),
+          estadoAsistencia: 'pendiente',
+        });
+        setAsistencias((prev) => [...prev, { ...formData, dni: formData.dni.trim(), email: formData.dni.trim(), estadoAsistencia: 'pendiente', id: docRef.id }]);
       }
-
       resetFormulario();
     } catch (error) {
-      setCrudError(error.message || 'No se pudo guardar la asistencia en Cloudinary.');
+      setCrudError(error.message || 'No se pudo guardar la asistencia en Firebase.');
     }
   };
 
@@ -242,62 +223,24 @@ function Administracion({ onVolver }) {
 
   const onEliminar = async (id) => {
     try {
-      const response = await fetch(buildApiUrl(`/api/asistencias/${id}`), {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'No se pudo eliminar la asistencia.');
-      }
-
+      const asistenciaRef = doc(db, 'asistencias', id);
+      await import('firebase/firestore').then(({ deleteDoc }) => deleteDoc(asistenciaRef));
       setAsistencias((prev) => prev.filter((item) => item.id !== id));
       if (editandoId === id) {
         resetFormulario();
       }
     } catch (error) {
-      setCrudError(error.message || 'No se pudo eliminar la asistencia en Cloudinary.');
+      setCrudError(error.message || 'No se pudo eliminar la asistencia en Firebase.');
     }
   };
 
   const onCambiarEstadoAsistencia = async (asistencia, estadoAsistencia) => {
     try {
-      let response = await fetch(buildApiUrl(`/api/asistencias/${asistencia.id}/estado`), {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          estadoAsistencia,
-        }),
-      });
-
-      if (response.status === 404 || response.status === 405) {
-        response = await fetch(buildApiUrl(`/api/asistencias/${asistencia.id}`), {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            nombre: asistencia.nombre,
-            apellido: asistencia.apellido,
-            telefono: asistencia.telefono,
-            dni: asistencia.dni || asistencia.email || '',
-            email: asistencia.dni || asistencia.email || '',
-            estadoAsistencia,
-          }),
-        });
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'No se pudo actualizar la asistencia al evento.');
-      }
-
-      const actualizada = await response.json();
-      setAsistencias((prev) => prev.map((item) => (item.id === actualizada.id ? actualizada : item)));
+      const asistenciaRef = doc(db, 'asistencias', asistencia.id);
+      await updateDoc(asistenciaRef, { estadoAsistencia });
+      setAsistencias((prev) => prev.map((item) => (item.id === asistencia.id ? { ...item, estadoAsistencia } : item)));
     } catch (error) {
-      setCrudError(error.message || 'No se pudo actualizar la asistencia al evento.');
+      setCrudError(error.message || 'No se pudo actualizar la asistencia al evento en Firebase.');
     }
   };
 
