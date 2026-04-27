@@ -167,16 +167,6 @@ function Administracion({ onVolver }) {
   };
 
   const validarFormulario = () => {
-    if (!formData.nombre.trim() || !formData.apellido.trim() || !formData.telefono.trim() || !formData.dni.trim()) {
-      setCrudError('Todos los campos son obligatorios.');
-      return false;
-    }
-
-    if (!/^\d{7,8}$/.test(formData.dni.trim())) {
-      setCrudError('Ingresa un DNI valido (7 u 8 numeros).');
-      return false;
-    }
-
     return true;
   };
 
