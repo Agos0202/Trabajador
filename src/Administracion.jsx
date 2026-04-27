@@ -585,7 +585,7 @@ function Administracion({ onVolver }) {
                 <h2 className="admin-dashboard-title">
                   Bienvenido, <span>Administrador</span>
                 </h2>
-                <p className="admin-dashboard-subtitle">Panel de control principal · Fiesta Dia del Trabajador</p>
+                <p className="admin-dashboard-subtitle">Fiesta Dia del Trabajador</p>
               </div>
 
               <h3 className="admin-modules-title">
