@@ -114,8 +114,9 @@ function TarjetaEvento({ onVolver }) {
   };
 
   const onSubmit = async (event) => {
-    event.preventDefault();
 
+    event.preventDefault();
+    console.log('Datos enviados:', formData);
     if (!validateForm()) {
       return;
     }
@@ -176,7 +177,7 @@ function TarjetaEvento({ onVolver }) {
         visible: true,
         tipo: 'error',
         titulo: 'No se pudo registrar',
-        mensaje: error.message || getConexionError(),
+        mensaje: error?.response?.data?.message || error.message || getConexionError(),
         numeroSorteo: null,
         recordatorio: '',
       });

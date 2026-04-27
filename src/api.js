@@ -20,11 +20,20 @@ const normalizeApiBaseUrl = (value) => {
 const API_BASE_URL = normalizeApiBaseUrl(process.env.REACT_APP_API_BASE_URL);
 
 export const buildApiUrl = (path) => {
-  if (!path.startsWith('/')) {
-    return `${API_BASE_URL}/${path}`;
+  // Si hay API_BASE_URL, usarla
+  if (API_BASE_URL) {
+    if (!path.startsWith('/')) {
+      return `${API_BASE_URL}/${path}`;
+    }
+    return `${API_BASE_URL}${path}`;
   }
-
-  return `${API_BASE_URL}${path}`;
+  // Si no hay API_BASE_URL, usar la ruta de Netlify Functions
+  // Si la ruta ya empieza con /api, anteponer /.netlify/functions/api
+  if (path.startsWith('/api')) {
+    return `/.netlify/functions/api${path}`;
+  }
+  // Si no, devolver la ruta tal cual (por compatibilidad)
+  return path;
 };
 
 export const getConexionError = () => {
