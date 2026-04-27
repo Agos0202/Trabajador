@@ -593,7 +593,7 @@ function Administracion({ onVolver }) {
             <>
               <div className="admin-dashboard-welcome">
                 <h2 className="admin-dashboard-title">
-                  Bienvenido, <span>{usuario || 'Administrador'}</span>
+                  Bienvenido, <span>Administrador</span>
                 </h2>
                 <p className="admin-dashboard-subtitle">Panel de control principal · Fiesta Dia del Trabajador</p>
               </div>
