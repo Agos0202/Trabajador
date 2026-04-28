@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import './TarjetaEvento.css';
 import FooterComuna from './FooterComuna';
 import { db } from './firebase';
-import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, getDocs, query, orderBy } from 'firebase/firestore';
 
 const getNextEventDate = () => {
   return new Date(2026, 4, 9, 12, 0, 0);
@@ -110,19 +110,30 @@ function TarjetaEvento({ onVolver }) {
         throw new Error('Ya te encuentras registrado/a');
       }
 
+      // Obtener el mayor número de sorteo existente
+      const q = query(collection(db, 'asistencias'), orderBy('numeroSorteo', 'desc'));
+      const snapshot = await getDocs(q);
+      let numeroSorteo = 1;
+      if (!snapshot.empty) {
+        const max = snapshot.docs[0].data().numeroSorteo;
+        numeroSorteo = (typeof max === 'number' && max > 0) ? max + 1 : 1;
+      }
+
       // 💾 guardar
       await addDoc(collection(db, 'asistencias'), {
         ...formData,
         dni: dniNormalizado,
         estadoAsistencia: 'pendiente',
-        createdAt: new Date()
+        createdAt: new Date(),
+        numeroSorteo
       });
 
       setModalAlerta({
         visible: true,
         tipo: 'success',
         titulo: 'Registro exitoso',
-        mensaje: 'Asistencia confirmada'
+        mensaje: '¡Asistencia confirmada!',
+        numeroSorteo
       });
 
       // actualizar lista local
@@ -160,77 +171,155 @@ function TarjetaEvento({ onVolver }) {
     <div className="evento-page">
       <main className="evento-layout">
         <div className="evento-stack">
-
           <h1 className="evento-title">¡Feliz Día del Trabajador!</h1>
-
+          <div className="evento-divider" aria-hidden="true" />
           <p className="evento-subtitle">
-            Te invitamos a compartir un locro criollo.
+            En reconocimiento a tu esfuerzo y dedicación, te invitamos a celebrar el Día del Trabajador junto a nosotros compartiendo un rico locro criollo entre amigos.<br />Será un honor contar con tu presencia en este evento especial.
           </p>
-
-          <p><b>Fecha:</b> {eventDateText} - 12:00 hs</p>
-
-          {/* ⏱ contador */}
-          <div className="countdown-grid">
-            <div>{timeLeft.days} días</div>
-            <div>{timeLeft.hours} hs</div>
-            <div>{timeLeft.minutes} min</div>
-            <div>{timeLeft.seconds} seg</div>
+          <div className="evento-meta">
+            <p className="mb-0">
+              <span className="fw-semibold">Lugar: Transporte SORIANA</span>
+            </p>
+            <a
+              className="evento-place-link"
+              href="https://maps.app.goo.gl/8XJZzduTbsrT53BP9"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Ver ubicación
+            </a>
           </div>
-
-          {/* 📋 formulario */}
-          <form onSubmit={onSubmit}>
-
-            <input
-              name="nombre"
-              placeholder="Nombre"
-              value={formData.nombre}
-              onChange={onInputChange}
-            />
-            <p>{errors.nombre}</p>
-
-            <input
-              name="apellido"
-              placeholder="Apellido"
-              value={formData.apellido}
-              onChange={onInputChange}
-            />
-            <p>{errors.apellido}</p>
-
-            <input
-              name="telefono"
-              placeholder="Teléfono"
-              value={formData.telefono}
-              onChange={onInputChange}
-            />
-            <p>{errors.telefono}</p>
-
-            <input
-              name="dni"
-              placeholder="DNI"
-              value={formData.dni}
-              onChange={onInputChange}
-            />
-            <p>{errors.dni}</p>
-
-            <button type="submit">Confirmar</button>
+          <div className="evento-bloque-verde">
+            <p className="mb-1 evento-bloque-fecha">
+              <span className="fw-semibold">El día </span> {eventDateText} - 12:00 hs
+            </p>
+            <div className="countdown-grid" role="timer" aria-live="polite">
+              <div className="countdown-box">
+                <div className="countdown-number">{timeLeft.days}</div>
+                <small className="countdown-label">Días</small>
+              </div>
+              <div className="countdown-box">
+                <div className="countdown-number">{timeLeft.hours}</div>
+                <small className="countdown-label">Horas</small>
+              </div>
+              <div className="countdown-box">
+                <div className="countdown-number">{timeLeft.minutes}</div>
+                <small className="countdown-label">Min</small>
+              </div>
+              <div className="countdown-box">
+                <div className="countdown-number">{timeLeft.seconds}</div>
+                <small className="countdown-label">Seg</small>
+              </div>
+            </div>
+            <p className="evento-subtitle evento-bloque-subtitle">
+              ¡Falta poco para el gran día!
+            </p>
+          </div>
+          <p className="evento-subtitle">
+            Para confirmar tu asistencia, completa el siguiente formulario. ¡Esperamos verte allí para celebrar juntos este día tan especial!
+          </p>
+          <form className="form-shell" onSubmit={onSubmit} autoComplete="off">
+            <h2 className="form-title">Confirmar asistencia</h2>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '1.2rem',
+              marginBottom: '1.2rem',
+              maxWidth: '600px',
+              width: '100%',
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <label className="form-label evento-label" htmlFor="nombre">Nombre</label>
+                <input
+                  id="nombre"
+                  name="nombre"
+                  className="elegant-input"
+                  placeholder="Nombre"
+                  value={formData.nombre}
+                  onChange={onInputChange}
+                  autoComplete="off"
+                />
+                {errors.nombre && <p className="form-error">{errors.nombre}</p>}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <label className="form-label evento-label" htmlFor="apellido">Apellido</label>
+                <input
+                  id="apellido"
+                  name="apellido"
+                  className="elegant-input"
+                  placeholder="Apellido"
+                  value={formData.apellido}
+                  onChange={onInputChange}
+                  autoComplete="off"
+                />
+                {errors.apellido && <p className="form-error">{errors.apellido}</p>}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <label className="form-label evento-label" htmlFor="telefono">Teléfono</label>
+                <input
+                  id="telefono"
+                  name="telefono"
+                  className="elegant-input"
+                  placeholder="Teléfono"
+                  value={formData.telefono}
+                  onChange={onInputChange}
+                  autoComplete="off"
+                />
+                {errors.telefono && <p className="form-error">{errors.telefono}</p>}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <label className="form-label evento-label" htmlFor="dni">DNI</label>
+                <input
+                  id="dni"
+                  name="dni"
+                  className="elegant-input"
+                  placeholder="DNI"
+                  value={formData.dni}
+                  onChange={onInputChange}
+                  autoComplete="off"
+                />
+                {errors.dni && <p className="form-error">{errors.dni}</p>}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'center' }}>
+              <button type="submit" className="btn-confirmar">Confirmar</button>
+              <button type="button" className="btn-volver" onClick={onVolver}>Volver</button>
+            </div>
           </form>
-
-          <button onClick={onVolver}>Volver</button>
-
+          <p className="evento-subtitle">
+            Exclusivo para trabajadores de la Comuna La Florida y Luisiana.
+          </p>
         </div>
       </main>
-
       <FooterComuna />
-
-      {/* 🔔 modal */}
+      {/* Modal de alerta elegante */}
       {modalAlerta.visible && (
-        <div className="modal">
-          <h2>{modalAlerta.titulo}</h2>
-          <p>{modalAlerta.mensaje}</p>
-          <button onClick={cerrarModal}>Cerrar</button>
+        <div className="modal-alerta-overlay">
+          <div className="modal-alerta-contenido">
+            <div className={`modal-alerta-header modal-alerta-header-${modalAlerta.tipo === 'success' ? 'success' : 'error'}`}> 
+              <div className={`modal-alerta-icono ${modalAlerta.tipo === 'success' ? 'modal-alerta-icon-success' : 'modal-alerta-icon-error'}`}>{modalAlerta.tipo === 'success' ? '✔' : '✖'}</div>
+              <h2 className="modal-alerta-titulo">{modalAlerta.titulo}</h2>
+            </div>
+            <div className="modal-alerta-cuerpo">
+              <p className="modal-alerta-mensaje">{modalAlerta.mensaje}</p>
+              {modalAlerta.tipo === 'success' && modalAlerta.numeroSorteo && (
+                <>
+                  <div className="modal-alerta-numero">{modalAlerta.numeroSorteo}</div>
+                  <div style={{ color: '#c2372f', fontWeight: 700, marginTop: '1rem', textAlign: 'center' }}>
+                    ¡No te olvides de sacar captura para participar ese día!
+                  </div>
+                  <div className="modal-alerta-recordatorio">
+                    Recuerda que los ganadores deben estar presente en el momento del sorteo.
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="modal-alerta-acciones">
+              <button className="modal-alerta-boton" onClick={cerrarModal}>Cerrar</button>
+            </div>
+          </div>
         </div>
       )}
-
     </div>
   );
 }

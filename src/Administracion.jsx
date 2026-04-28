@@ -195,14 +195,25 @@ function Administracion({ onVolver }) {
         });
         setAsistencias((prev) => prev.map((item) => (item.id === editandoId ? { ...item, ...formData, dni: formData.dni.trim(), email: formData.dni.trim() } : item)));
       } else {
-        // Agregar nueva asistencia
+        // Obtener el mayor numeroSorteo existente
+        const { getDocs, query, collection, orderBy } = await import('firebase/firestore');
+        const q = query(collection(db, 'asistencias'), orderBy('numeroSorteo', 'desc'));
+        const snapshot = await getDocs(q);
+        let numeroSorteo = 1;
+        if (!snapshot.empty) {
+          const max = snapshot.docs[0].data().numeroSorteo;
+          numeroSorteo = (typeof max === 'number' && max > 0) ? max + 1 : 1;
+        }
+
+        // Agregar nueva asistencia con numeroSorteo único
         const docRef = await addDoc(collection(db, 'asistencias'), {
           ...formData,
           dni: formData.dni.trim(),
           email: formData.dni.trim(),
           estadoAsistencia: 'pendiente',
+          numeroSorteo,
         });
-        setAsistencias((prev) => [...prev, { ...formData, dni: formData.dni.trim(), email: formData.dni.trim(), estadoAsistencia: 'pendiente', id: docRef.id }]);
+        setAsistencias((prev) => [...prev, { ...formData, dni: formData.dni.trim(), email: formData.dni.trim(), estadoAsistencia: 'pendiente', numeroSorteo, id: docRef.id }]);
       }
       resetFormulario();
     } catch (error) {
