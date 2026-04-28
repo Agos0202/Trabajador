@@ -25,6 +25,14 @@
   color: #3d4f22;
 }
 
+.comuna-textoo {
+  margin-top: 1.5rem;
+  font-family: 'Poppins', sans-serif;
+  font-size: clamp(0.65rem, 1.2vw, 0.75rem);
+  font-weight: 300;
+  color: #3d4f22;
+}
+
 .social-item {
   color: #4f642a;
   font-size: 1.35rem;

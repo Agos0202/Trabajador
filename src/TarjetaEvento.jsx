@@ -317,6 +317,7 @@ const [guardando, setGuardando] = useState(false);
             </div>
             <div className="modal-alerta-cuerpo">
               <p className="modal-alerta-mensaje">{modalAlerta.mensaje}</p>
+              <p className="modal-alerta-mensaje">Tu numero de sorteo es:</p>
               {modalAlerta.tipo === 'success' && modalAlerta.numeroSorteo && (
                 <>
                   <div className="modal-alerta-numero">{modalAlerta.numeroSorteo}</div>
