@@ -54,6 +54,7 @@ function FooterComuna() {
             <i className="bi bi-whatsapp" />
           </a>
         </div>
+        <p className="comuna-text mb-2">Comuna Rural la Florida y Luisiana</p>
       </div>
     </footer>
   );

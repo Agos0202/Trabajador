@@ -40,12 +40,12 @@ function TarjetaEvento({ onVolver }) {
   const [errors, setErrors] = useState({});
   const [dnisRegistrados, setDnisRegistrados] = useState([]);
   const [modalAlerta, setModalAlerta] = useState({
-    visible: false,
-    tipo: 'info',
-    titulo: '',
-    mensaje: '',
-  });
-
+  visible: false,
+  tipo: 'info',
+  titulo: '',
+  mensaje: '',
+});
+const [guardando, setGuardando] = useState(false);
   // ⏱ contador
   useEffect(() => {
     const timer = setInterval(() => {
@@ -105,6 +105,8 @@ function TarjetaEvento({ onVolver }) {
   const onSubmit = async (e) => {
     e.preventDefault();
 
+    if (guardando) return;
+
     if (!validateForm()) {
       setModalAlerta({
         visible: true,
@@ -115,6 +117,7 @@ function TarjetaEvento({ onVolver }) {
       return;
     }
 
+    setGuardando(true);
     const dniNormalizado = normalizarDni(formData.dni);
 
     try {
@@ -162,6 +165,8 @@ function TarjetaEvento({ onVolver }) {
         titulo: 'Error',
         mensaje: error.message
       });
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -290,7 +295,9 @@ function TarjetaEvento({ onVolver }) {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', justifyContent: 'center' }}>
-              <button type="submit" className="btn-confirmar">Confirmar</button>
+              <button type="submit" className="btn-confirmar" disabled={guardando}>
+                {guardando ? 'Guardando...' : 'Confirmar'}
+              </button>
               <button type="button" className="btn-volver" onClick={onVolver}>Volver</button>
             </div>
           </form>

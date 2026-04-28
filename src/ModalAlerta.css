@@ -1,0 +1,50 @@
+.modal-alerta-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.modal-alerta {
+  background: #fff;
+  border-radius: 10px;
+  padding: 2rem 1.5rem;
+  min-width: 300px;
+  max-width: 90vw;
+  box-shadow: 0 2px 16px rgba(32,78,53,0.15);
+  text-align: center;
+}
+.modal-alerta-title {
+  font-size: 1.2rem;
+  margin-bottom: 0.7rem;
+  color: #204e35;
+}
+.modal-alerta-mensaje {
+  font-size: 1rem;
+  margin-bottom: 1.2rem;
+  color: #4b5e54;
+}
+.modal-alerta-btn {
+  background: #204e35;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1.2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.modal-alerta-btn:hover {
+  background: #155c2c;
+}
+.modal-alerta-error {
+  border-left: 6px solid #c0392b;
+}
+.modal-alerta-success {
+  border-left: 6px solid #27ae60;
+}
+.modal-alerta-info {
+  border-left: 6px solid #2980b9;
+}

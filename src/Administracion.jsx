@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import ModalAlerta from './ModalAlerta';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import './Administracion.css';
@@ -64,9 +65,11 @@ function Administracion({ onVolver, onLogout }) {
   });
 
   const [busqueda, setBusqueda] = useState('');
+  const [guardando, setGuardando] = useState(false);
   const [busquedaAsistencia, setBusquedaAsistencia] = useState('');
   const [crudError, setCrudError] = useState('');
   const [descargandoPdf, setDescargandoPdf] = useState(false);
+  const [modalAlerta, setModalAlerta] = useState({ visible: false, tipo: 'info', titulo: '', mensaje: '' });
   const [descargandoPdfAsistencia, setDescargandoPdfAsistencia] = useState(false);
   const [seccionActiva, setSeccionActiva] = useState(obtenerSeccionDesdeRuta);
   const [fechaActual] = useState(() => new Date());
@@ -178,10 +181,11 @@ function Administracion({ onVolver, onLogout }) {
   const onGuardarAsistencia = async (event) => {
     event.preventDefault();
 
-    if (!validarFormulario()) {
+    if (!validarFormulario() || guardando) {
       return;
     }
 
+    setGuardando(true);
     try {
       if (editandoId) {
         // Actualizar asistencia existente
@@ -194,6 +198,7 @@ function Administracion({ onVolver, onLogout }) {
             asistencias.find((item) => item.id === editandoId)?.estadoAsistencia || 'pendiente',
         });
         setAsistencias((prev) => prev.map((item) => (item.id === editandoId ? { ...item, ...formData, dni: formData.dni.trim(), email: formData.dni.trim() } : item)));
+        setModalAlerta({ visible: true, tipo: 'success', titulo: 'Actualización exitosa', mensaje: 'La asistencia fue actualizada correctamente.' });
       } else {
         // Obtener el mayor numeroSorteo existente
         const { getDocs, query, collection, orderBy } = await import('firebase/firestore');
@@ -214,11 +219,27 @@ function Administracion({ onVolver, onLogout }) {
           numeroSorteo,
         });
         setAsistencias((prev) => [...prev, { ...formData, dni: formData.dni.trim(), email: formData.dni.trim(), estadoAsistencia: 'pendiente', numeroSorteo, id: docRef.id }]);
+        setModalAlerta({
+          visible: true,
+          tipo: 'success',
+          titulo: 'Registro exitoso',
+          mensaje: `La asistencia fue registrada correctamente.\nN° de sorteo asignado: ${numeroSorteo}`
+        });
       }
       resetFormulario();
-    } catch (error) {
-      setCrudError(error.message || 'No se pudo guardar la asistencia en Firebase.');
-    }
+
+      } catch (error) {
+  setCrudError(error.message || 'No se pudo guardar la asistencia en Firebase.');
+  setModalAlerta({
+    visible: true,
+    tipo: 'error',
+    titulo: 'Error',
+    mensaje: error.message || 'No se pudo guardar la asistencia en Firebase.'
+  });
+} finally {
+  setGuardando(false);
+}
+   
   };
 
   const onEditar = (asistencia) => {
@@ -240,8 +261,10 @@ function Administracion({ onVolver, onLogout }) {
       if (editandoId === id) {
         resetFormulario();
       }
+      setModalAlerta({ visible: true, tipo: 'success', titulo: 'Eliminado', mensaje: 'La asistencia fue eliminada correctamente.' });
     } catch (error) {
       setCrudError(error.message || 'No se pudo eliminar la asistencia en Firebase.');
+      setModalAlerta({ visible: true, tipo: 'error', titulo: 'Error', mensaje: error.message || 'No se pudo eliminar la asistencia en Firebase.' });
     }
   };
 
@@ -250,8 +273,10 @@ function Administracion({ onVolver, onLogout }) {
       const asistenciaRef = doc(db, 'asistencias', asistencia.id);
       await updateDoc(asistenciaRef, { estadoAsistencia });
       setAsistencias((prev) => prev.map((item) => (item.id === asistencia.id ? { ...item, estadoAsistencia } : item)));
+      setModalAlerta({ visible: true, tipo: 'success', titulo: 'Estado actualizado', mensaje: 'El estado de asistencia fue actualizado.' });
     } catch (error) {
       setCrudError(error.message || 'No se pudo actualizar la asistencia al evento en Firebase.');
+      setModalAlerta({ visible: true, tipo: 'error', titulo: 'Error', mensaje: error.message || 'No se pudo actualizar la asistencia al evento en Firebase.' });
     }
   };
 
@@ -286,10 +311,16 @@ function Administracion({ onVolver, onLogout }) {
       doc.setFontSize(11);
       doc.text(`Generado: ${new Date().toLocaleString('es-AR')}`, 102, 62);
 
+      // Ordenar invitados por el orden de carga (numeroSorteo ascendente)
+      const invitadosOrdenados = [...asistenciasFiltradas].sort((a, b) => {
+        const nA = Number(a.numeroSorteo) || 0;
+        const nB = Number(b.numeroSorteo) || 0;
+        return nA - nB;
+      });
       autoTable(doc, {
         startY: 110,
         head: [['N°', 'Apellido', 'Nombre', 'Telefono', 'DNI']],
-        body: asistenciasFiltradas.map((item, index) => [
+        body: invitadosOrdenados.map((item, index) => [
           obtenerNumeroSorteo(item, index),
           item.apellido,
           item.nombre,
@@ -514,6 +545,13 @@ function Administracion({ onVolver, onLogout }) {
 
   return (
     <main className="admin-page">
+      <ModalAlerta
+        visible={modalAlerta.visible}
+        tipo={modalAlerta.tipo}
+        titulo={modalAlerta.titulo}
+        mensaje={modalAlerta.mensaje}
+        onClose={() => setModalAlerta((prev) => ({ ...prev, visible: false }))}
+      />
       <section className="admin-panel">
         <header className="admin-header">
           <nav className="admin-topbar" aria-label="Navegacion principal administracion">
@@ -625,7 +663,9 @@ function Administracion({ onVolver, onLogout }) {
 
                 {crudError ? <p className="admin-error">{crudError}</p> : null}
 
-                <button type="submit" className="admin-button primary">{editandoId ? 'Guardar cambios' : 'Agregar asistencia'}</button>
+                <button type="submit" className="admin-button primary" disabled={guardando}>
+                  {guardando ? 'Guardando...' : (editandoId ? 'Guardar cambios' : 'Agregar asistencia')}
+                </button>
                 <button type="button" className="admin-button secondary" onClick={resetFormulario}>Limpiar</button>
               </form>
 
