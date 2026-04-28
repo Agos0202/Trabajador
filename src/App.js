@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import PantallaInicio from './PantallaInicio';
 import TarjetaEvento from './TarjetaEvento';
 import Administracion from './Administracion';
+import Login from './Login';
 
 const obtenerPantallaDesdeRuta = () => {
   if (window.location.pathname.startsWith('/4dmin2026c0mun4')) {
@@ -15,6 +16,9 @@ const obtenerPantallaDesdeRuta = () => {
 
 function App() {
   const [pantalla, setPantalla] = useState(obtenerPantallaDesdeRuta);
+  const [adminLogueado, setAdminLogueado] = useState(() => {
+    return window.localStorage.getItem('adminLogueado') === '1';
+  });
 
   const irAEvento = () => {
     window.history.pushState({ pantalla: 'evento' }, '', '/evento');
@@ -37,10 +41,25 @@ function App() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  const handleLogin = () => {
+    setAdminLogueado(true);
+    window.localStorage.setItem('adminLogueado', '1');
+  };
+
+  const handleLogout = () => {
+    setAdminLogueado(false);
+    window.localStorage.removeItem('adminLogueado');
+    irAInicio();
+  };
+
   return (
     <>
       {pantalla === 'administracion' ? (
-        <Administracion onVolver={irAInicio} />
+        adminLogueado ? (
+          <Administracion onVolver={irAInicio} onLogout={handleLogout} />
+        ) : (
+          <Login onLogin={handleLogin} />
+        )
       ) : pantalla === 'inicio' ? (
         <PantallaInicio onEnter={irAEvento} />
       ) : (

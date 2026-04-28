@@ -52,7 +52,7 @@ const obtenerNumeroSorteo = (item, indexFallback = 0) => {
   return indexFallback + 1;
 };
 
-function Administracion({ onVolver }) {
+function Administracion({ onVolver, onLogout }) {
 
   const [asistencias, setAsistencias] = useState([]);
   const [editandoId, setEditandoId] = useState(null);
@@ -528,7 +528,17 @@ function Administracion({ onVolver }) {
 
             <p className="admin-topbar-title">Comuna La Florida y Luisiana</p>
 
-            {/* Botón de cerrar sesión eliminado */}
+            {typeof onLogout === 'function' && (
+              <button
+                type="button"
+                className="admin-top-icon"
+                style={{ marginLeft: 'auto' }}
+                onClick={onLogout}
+                aria-label="Cerrar sesión"
+              >
+                Salir
+              </button>
+            )}
           </nav>
         </header>
 
