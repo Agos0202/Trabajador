@@ -87,11 +87,16 @@ function TarjetaEvento({ onVolver }) {
 
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es obligatorio';
     if (!formData.apellido.trim()) newErrors.apellido = 'El apellido es obligatorio';
     if (!formData.telefono.trim()) newErrors.telefono = 'El teléfono es obligatorio';
     if (!formData.dni.trim()) newErrors.dni = 'El DNI es obligatorio';
+
+    // Validar que el DNI no esté repetido
+    const dniNormalizado = normalizarDni(formData.dni);
+    if (dniNormalizado && dnisRegistrados.includes(dniNormalizado)) {
+      newErrors.dni = 'Ya existe una persona registrada con este DNI';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -100,16 +105,19 @@ function TarjetaEvento({ onVolver }) {
   const onSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      setModalAlerta({
+        visible: true,
+        tipo: 'error',
+        titulo: 'Error',
+        mensaje: 'Por favor completá todos los campos obligatorios y asegurate de que el DNI no esté repetido.'
+      });
+      return;
+    }
 
     const dniNormalizado = normalizarDni(formData.dni);
 
     try {
-      // 🚫 validar duplicado LOCAL
-      if (dnisRegistrados.includes(dniNormalizado)) {
-        throw new Error('Ya te encuentras registrado/a');
-      }
-
       // Obtener el mayor número de sorteo existente
       const q = query(collection(db, 'asistencias'), orderBy('numeroSorteo', 'desc'));
       const snapshot = await getDocs(q);
@@ -221,8 +229,8 @@ function TarjetaEvento({ onVolver }) {
           <form className="form-shell" onSubmit={onSubmit} autoComplete="off">
             <h2 className="form-title">Confirmar asistencia</h2>
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
+              display: 'flex',
+              flexDirection: 'column',
               gap: '1.2rem',
               marginBottom: '1.2rem',
               maxWidth: '600px',
